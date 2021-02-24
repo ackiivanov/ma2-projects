@@ -1,0 +1,218 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{kepler.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+\newcommand{\diff}{\mathop{}\!\mathrm{d}}
+
+\begin{document}
+
+\title{Kepler Many Body Problems}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+\subsubsection*{Problem 1}
+
+Follow the motion of a planet in orbit around a star. Observe the constancy of the distance between the bodies for circular orbits. Check the accuracy of the calculated period and return point after an orbit for elliptical orbits, especially for those with small initial velocity. Also observe the constancy of energy and angular momentum.
+
+\subsubsection*{Problem 2}
+
+Investigate the motion of a planet in a circular orbit around a binary star system, where each of the stars has half a solar mass. The stars are in orbit around their combined center of mass and the planet's effect on their orbit is negligible.
+
+\subsubsection*{Problem 3}
+
+A star flies by near a solar system with a single planet in a circular orbit around massive star. The incoming star flies in with a velocity that is twice as large as the velocity of the planet around the massive star and moving in a line that is $1.5$ orbit radii away from the massive star (we neglect the arc in the passing star's motion due to the interaction between it and the massive star). Find the final fate of the planet depending on its initial phase in the orbit. We start the calculation when the passing star is $10$ radii away from its perihelion and end them at the symmetric point on the other side. What changes if the planet orbits in the opposite direction?
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{different_v0.png}
+    \caption{The shapes of orbits with different $v_0$. We see that $v_0$ is effectively a measure of the eccentricity. The dashed trajectories would are continuations backwards in time.}
+    \label{fig:diff_v0}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{circular_dist_log.png}
+    \caption{The relative distance deviation over time plotted in a log scale, for the three mentioned algorithms, simulating a circular orbit, where the step size has been fixed to $h=0.1$, and we have simulated $N=200$ steps.}
+    \label{fig:circ_dist_log}
+\end{figure}
+
+\section{Mathematical Setup}
+
+We are, of course, solving the (nondimensionalized) Kepler problem of motion in the potential
+%
+\begin{align}
+    V (r) = - \frac{1}{r}.
+\end{align}
+
+As has been known for more than $300$ years, this potential supports two types of trajectories: elliptical orbits and hyperbolic flybys (with circles, parabolas and even lines supported as degenerate cases of these). The energy of these trajectories is given by the usual
+%
+\begin{align}
+    E = \frac{\vec{v}^2}{2} - \frac{1}{|\vec{r}|} = \frac{v_0^2}{2} - 1,
+\end{align} 
+%
+where we have assumed that $|\vec{r}(t=0)| = 1$ and $|\vec{v}(t=0)| = v_0$, which are the initial conditions we'll be working with.
+
+In the case of elliptical orbits this means that the semi-major axis and eccentricity are
+%
+\begin{align}
+    &a = \frac{1}{2 - v_0^2},& &\epsilon = |1 - v_0^2|,&
+\end{align}
+
+This evidently holds up to $|v_0| = \sqrt{2}$ after which the planet has too much energy to be in a bound state and moves on a hyperbolic trajectory. Corroborated by \cref{fig:diff_v0}, this means that $v_0$ is effectively a measure of the eccentricity of the orbit, with $0 < |v_0| \leq \sqrt{2}$ giving elliptical orbits. The special case of the circular orbit with $|v_0|=1$ should also be mentioned.
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.24]{circular.png}
+    \caption{Orbit, energy deviation, angular momentum deviation and period deviation as a function of time for a circular orbit, with time step $h=0.1$ and $N=5000$ steps.}
+    \label{fig:circ}
+\end{figure}
+
+\section{Numerical Methods}
+
+Care has to be taken when simulating a Keplerian system numerically, depending on what the most important quantity that we want to calculate is and in what region of parameter space we are. When we want to simulate the system for a large number of time steps, we may want to use a symplectic integrator that doesn't constantly lose energy, while if we work with highly eccentric orbits, that could come close to the singularity, then an adaptive step integrator is more suited for the task. For our purposes we will be using the \emph{Position Extended Forrest-Ruth-Like 4th order symplectic integrator (PEFRL)} \cite{Omelyan_2002}, when in need for an algorithm that doesn't constantly lose energy and the \emph{Runge-Kutta-Fehlberg 4th order integrator with a 5th order estimator (RKF)} when in need of an adaptive step method. \footnote{Theoretically, this isn't really an either/or question; one can do both. Practically however, it's not that easy of a task. \cite{Richardson_2011}}
+
+We first look at the case of circular orbits to calibrate and compare our methods. Since it is unfair to compare an adaptive step method with a fixed step method whose step we have fixed beforehand, we will look at the behavior of PEFRL and the 4th order Runge-Kutta integrator, which is the main component of RKF just to observe the energy loss that these types of integrators exhibit. We will also plot the behavior of the Verlet 2nd order symplectic integrator to see why we choose a 4th order integrator instead.
+
+As a first measure of accuracy we can look at the distance between the planet and star of Problem 1 and how constant it says over time. The result can be seen in \cref{fig:circ_dist_log}. Since the distance is closely related to the energy, we see the main difference between symplectic and non-symplectic integrators in regard to energy, which is that non-symplectic integrators lose more energy the longer you integrate, eventually diverging, while symplectic integrators only oscillate around and do not let the energy diverge. We also see that the size of these oscillations is affected by the order of the integrator; higher order integrators are more accurate even at larger steps.
+
+A more complete look into circular orbits is provided by \cref{fig:circ}. In it, we again see the energy drift we expect of non-symplectic methods, but we also see that the same is true of angular momentum too. The symplectic methods, on the other hand, conserve angular momentum very well, keeping the deviation on the order of numerical error. The non-symplectic method consequently has a drift in the period too, while the symplectic methods keep that deviation constant, but again, order maters a lot.
+
+The adaptive step RKF method gets its tolerance as a parameter and generically is able to stay pretty close to it \cite{mfp_rkf}. Being a Runge-Kutta method though, it still has a constant small leakage of energy, so we should be careful not to overextend in time.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{binary_prec.png}
+    \caption{Stable orbits around the binary precess. The precession is smaller, the smaller the distance between the stars.}
+    \label{fig:binary_prec}
+\end{figure}
+
+\section{Orbit around Binary}
+
+For the second problem we can parametrize the binary with
+%
+\begin{align}
+    \vec{R} = \left( a \sin \left(\sqrt{1/8} t\right),  a \cos \left(\sqrt{1/8} t \right) \right),
+\end{align}
+%
+by placing one of the stars at $\vec{R}$ and the other at $-\vec{R}$. The initial conditions for the planet can then always be as discussed before.
+
+Integrating the system, then lead to a couple of different outcomes. One possible outcome is that the planet remains in orbit around the binary, but in this case there is always some precession of the orbit if the orbit as shown in \cref{fig:binary_prec}. This precession gets smaller, the smaller $a$ is, as expected, since in that limit our binary effectively becomes a single star. It's also possible for the planet to be ejected out of the system. In fact this is the predominant behavior for $a$ approaching $1$. Under specific initial conditions a possible trajectory of the planet is something called a horseshoe orbit as discussed in \cite{Christou_2011}.
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{period_v0.png}
+    \caption{Calculated and analytical periods as a function of the initial velocity $v_0$. At some small velocities the PEFRL does such a bad job that a period can't even be identified. There were $N=10 000$ steps of size $h=0.001$ used.}
+    \label{fig:periods}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{returnx_v0.png}
+    \caption{Calculated and analytical return points as a function of the initial velocity $v_0$. At some small velocities PEFRL again does a bad enough job that a return point can't even be identified. There were $N=10 000$ steps of size $h=0.001$ used.}
+    \label{fig:returnxs}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{orbit_smallv0.png}
+    \caption{An example for the type of orbits one calculates with a non-adaptive step method like PEFRL, when in the regime of very eccentric orbits.}
+    \label{fig:orbit_smallv0}
+\end{figure}
+
+
+\section{Period and Return Point}
+
+What's left of Problem 1 is to calculate the period and return point after one orbit as a function of the initial velocity of the planet around the star. This is done in \cref{fig:periods,fig:returnxs}. We finally explicitly see where an adaptive step method is necessary; PEFRL does a good job as long as the orbit isn't too eccentric, where the meaning on too eccentric is mainly determined by the step size, but when we get to close to the singularity it simply can't keep up with the fast change during a small distance. An example of what happens to the orbit in this regime is shown in \cref{fig:orbit_smallv0}. An adaptive step method would account for this while not wasting computing time with small steps during the comparatively slow pieces of the orbit.
+
+
+\section{Flyby of Passing Star}
+
+Playing around with this system, it can easily be seen that if the planet remains in orbit around either of the stars then very often the orbit has quite a large eccentricity. For this reason we will be using the RKF algorithm to simulate the interaction. After the interaction, there are three possible outcomes for the planet: it can remain in orbit around the massive star, it can switch to an orbit around the passing star, or it can be completely ejected and not bound to any of the stars.
+
+We can distinguish between these three possibilities by looking at the energy and its first time derivative at the end of the interaction. We calculate $E$ and $\dot{E}$ in two different frames: the one fixed to the massive star and the one fixed to the passing star. For the planet to be bound to the massive star, the energy of the planet at the end of the interaction in the frame of the massive star should be smaller than $0$. However, this condition is not enough because if the body ended up bound to the passing star then the energy could accidentally be smaller than $0$ just because of the moment we stopped the simulation. In this case we look at the time derivative of the energy $\dot{E}$ because another condition to have a stable orbit is to have constant energy. This allows us to differentiate between actually bound orbits and accidental negative energy. The story plays out the same for the passing star with the only difference being that now we have to calculate the energy and energy derivative in the second frame --- the one that is fixed to the passing star. Finally, if the star isn't bound to any of the two stars then it will be ejected. An equivalent condition is that the energy is positive and approximately constant in both frames.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{energy1_phi0.png}
+    \caption{The energy $E$ and energy time derivative $\dot{E}$ of the planet in the first frame, at the end of the interaction as functions of the initial angle $\phi_0$, for the forwards and backwards directions.1}
+    \label{fig:energy1_phi0}
+\end{figure}
+
+In practice, we get two complications to this logic. Firstly, the condition that the energy should be negative to have a bound orbit only holds if the two stars are far enough away at the end of the interaction that the dominant gravitational contribution from one stars is much larger than the other. And secondly, we don't expect $\dot{E}$ to actually be zero, rather it's at most going to be small.
+
+For our specific problem we have a circular orbit ($|v_0|=1$) and two cases: the counterclockwise orbit, which we will call forwards, and the clockwise orbit, which we will call backwards. $E$ and $\dot{E}$ in the first frame as functions of the initial angle are shown in \cref{fig:energy1_phi0}. For the forwards direction it shows that the energy is below $0$ for any value of the initial angle and that $\dot{E}$ hovers around $10^{-3}$, which is close enough to $0$ in this case, meaning that, for this direction, the planet stays bounded to the massive star irrespective of the initial angle $\phi_0$. For the backwards direction the situation is very different. The predescribed conditions are only met for a range of angles $\phi_0 \in [2.86, 5.27]$. At first sight, it seems as though the $\dot{E}$ condition gets ambiguous in meaning around $\phi_0 = 3$, since it starts rising. Upon further inspection this turns out to be a red herring and only an artifact of the amount time we're simulating for; redoing the calculation for lager times makes the region larger.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{energy2_phi0.png}
+    \caption{The energy $E$ and energy time derivative $\dot{E}$ of the planet in the second frame, at the end of the interaction as functions of the initial angle $\phi_0$, for the forwards and backwards directions.}
+    \label{fig:energy2_phi0}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{around2.png}
+    \caption{Examples of orbits for which the passing star captures the planet.}
+    \label{fig:around2}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{surprise.png}
+    \caption{An example of an orbit, which starts with enough velocity to escape, but loses it to the passing star and falls into orbit around the massive star.}
+    \label{fig:surprise}
+\end{figure}
+
+To investigate whether the planet gets captured by the passing star we also need to look at the energy in the reference frame of that star. This is done in \cref{fig:energy2_phi0}. The most obvious thing is that we see spikes in the energy, which on closer inspection also appeared in the previous plot. These are due to the fact that under a transformation of reference frame the energy gains a term proportional to 
+%
+\begin{align}
+    \vec{v} \cdot \vec{V} \propto v_x,
+\end{align}
+%
+where $\vec{v}$ is the velocity of the final frame and $\vec{V}$ is the velocity of the frame itself. This means that if $v_x$ happens to be oscillatory, as is the case of an orbiting body, the transformed energy also becomes oscillatory in time. Furthermore, in the non-chaotic regions where a small change in $\phi_0$ leads to a small change in the final position, these oscillations in time effectively get translated to the spikes we see in the figures.
+
+By the same logic as before, we see that the forwards direction doesn't support a final state that is bound to the passing star, as is expected since we already found that it always stays bounded to the massive star. The more interesting result is, again, for the backwards direction, where we do find a region of initial angles that supports capture by the passing star; this is the region $\phi_0 \in [5.36, 5.87]$. Example orbits for which this kind of capture happens are shown in \cref{fig:around2}, where we can also see how eccentric they can be. Every other initial angle for the backwards direction, besides these two intervals leads to ejection of the planet.
+
+This method of searching for regions of parameter space where the planet is captured is quite general and can, in principle, be done for any velocity. However, at small velocities the major problem becomes being able to integrate the differential equations accurately. Even the adaptive step RKF method for the case of an initially circular orbit has trouble getting results to tolerances lower than $\epsilon = 5 \cdot 10^{-5}$, since it would need steps smaller than what's representable with double precision. This can, up to a point, be amended by rescaling the problem, but that's not a complete fix.
+
+Repeating the procedure for higher velocities, gives a result that could have been expected, namely the planet gets ejected more often, since the initial configuration is less bound. However, a somewhat more surprising effect is that for some initial angles, what we would naively classify as escape trajectories because they have $v_0 > \sqrt{2}$ can exchange enough energy with the passing star to stabilize and go into orbit around the original star. Such an example is shown in \cref{fig:surprise}.
+
+The highest possible initial velocity that has any kind of bound orbit is around $v_0=1.60$ for the forward direction, where the orbit happens at an angle of $\phi_0=5.00$, and $v_0=1.79$ for the backwards direction, with the angle being $\phi_0 = 4.02$. In both cases the orbits are around the massive star.
+
+The highest possible initial velocity that has any kind of bound orbit around the second star is around $v_0=0.525$ for the forward direction, where the orbit happens at an angle of around $\phi_0=2.15$, and $v_0=1.037$ for the backwards direction, with the angle being $\phi_0 = 4.91$.
+
+
+\printbibliography
+
+
+\end{document}
