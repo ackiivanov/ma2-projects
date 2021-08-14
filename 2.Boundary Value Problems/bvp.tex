@@ -1,0 +1,267 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{bvp.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+\newcommand{\diff}{\mathop{}\!\mathrm{d}}
+
+\begin{document}
+
+\title{Boundary Value Problems}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+\subsubsection*{Problem 1}
+
+Calculate the shape of a sting that is fixed at two points along the vertical axis (we can choose the points to be $(0, 0)$ and $(0, y_F)$) and that is spinning with an angular velocity $\omega$. Investigate the set of possible solutions.
+
+\subsubsection*{Problem 2}
+
+For studying the motion of stars within the galaxy, H\'enon and Heiles \cite{hh} introduced the potential
+%
+\begin{align}
+    V(x, y) = \frac{1}{2} \left( x^2 + y^2 \right) + x^2 y -\frac{1}{3} y^3.
+\end{align}
+
+For energies $E < 1/6$ the motion is bounded within an equilateral triangle. Depending on the initial conditions, the motion is either periodic, quasiperiodic or chaotic.
+
+Using the shooting method find the periodic orbits for different values of the energy. Because of symmetry, you can limit the initial conditions to the interval between the origin and the point $(0, 1)$ and you can find the initial condition using the Poincar\'e section.
+Try to find quantities with the help of which you can classify the trajectories into classes (e.g. winding number).
+
+\subsubsection*{Remark:}
+
+The way the professor drew the picture during lecture and the way the equations are set up are inconsistent with each other (unless gravity was supposed to point upwards). Here I choose to keep the equations as is and work in a coordinate system oriented upwards. What the professor called $y_{\mathrm{max}}$ is in this case more akin to $y_{\mathrm{min}}$. An equivalent choice would have been to switch the direction of gravity.
+
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{few_curves_0.9_15.png}
+    \caption{Shape of the string for a couple of different values of $\beta$ with one extremum. All curves for the different $\beta$ have a similar ratio $F/\beta$.}
+    \label{fig:few_curves_1}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.4]{analytical.png}
+    \caption{Analytically predicted shape for parameters $A = 38$, $C = 24$ and $\beta = 30$ large. Only half of the shape is shown since it is a doubly-valued function otherwise and in this limit the other half is symmetrically reflected.}
+    \label{fig:analytical}
+\end{figure}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[scale=0.5]{force_15.png}
+    \caption{Force ratio $F/\beta$ as a function of string parameter $s$ for a couple of different values of $\beta$ with one extremum.}
+    \label{fig:force_1}
+\end{figure}
+
+\begin{figure}[tbh]
+    \centering
+    \includegraphics[scale=0.5]{few_curves_0.9_35.png}
+    \caption{Shape of the string for a couple of different values of $\beta$ with two extrema.}
+    \label{fig:few_curves_2}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{force_35.png}
+    \caption{Force ratio $F/\beta$ as a function of string parameter $s$ for a couple of different values of $\beta$ with two extrema.}
+    \label{fig:force_2}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{few_curves_0.9_78.png}
+    \caption{Shape of the string for a couple of different values of $\beta$ with three extrema.}
+    \label{fig:few_curves_3}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{force_78.png}
+    \caption{Force ratio $F/\beta$ as a function of string parameter $s$ for a couple of different values of $\beta$ with three extrema.}
+    \label{fig:force_3}
+\end{figure}
+
+\section{Mathematical Setup 1}
+
+In dimensionless variables, where $\alpha$ is the angle of the string with the $x$-axis and $F$ is the tension force in the string, the equations governing the motion of the system are
+%
+\begin{align}
+    \frac{\dif x}{\dif s} &= \cos(\alpha), \notag\\
+    \frac{\dif y}{\dif s} &= \sin(\alpha), \notag\\
+    \frac{\dif F}{\dif s} &= -\beta x \cos(\alpha) + \sin(\alpha), \notag\\
+    \frac{\dif \alpha}{\dif s} &= \frac{1}{F} (\beta x \sin(\alpha) + \cos(\alpha)),
+\end{align}
+%
+where $s$ is the length along the string, that parametrizes it, and $\beta$ is the dimensionless angular velocity. By the setup of the physical problem we see that $\alpha(s = 0)$ is limited to the interval $[-\pi/2, \pi/2]$, since angles on the other side don't have to be considered separately because of the reflection symmetry of the problem around the $y$-axis.
+
+Forces in the problem define three scales. The centrifugal force, parametrized by $\beta$, is one scale of the problem, next is the tension in the string $F$ and finally gravity, in this dimensionless form, is of the order $1$. So there are some interesting asymptotic limits to investigate analytically. 
+
+The easiest to understand, if one has ever dealt with the shape of strings under some outside force, is the limit $\beta \ll 1$. To zeroth order in this limit we can neglect the terms containing $\beta$ in the equations for $F$ and $\alpha$. This gives us the usual system of differential equations for a string hanging in a gravitational field, which we know has the solution
+%
+\begin{align}
+    y(x) = A \cosh \left( \frac{x}{A} \right) + B,
+\end{align}
+%
+where $A$ and $B$ are fixed by the boundary conditions. This is however, problematic, because our boundary conditions are applied at the same position of $x$ at both end, namely $0$, i.e. the $\cosh$ degenerates to a line. The particular limit is then a singular limit of the problem and numerically we should expect the results to not be well-behaved the closer we get to it. Another sign towards this conclusion is the fact that at the bottom-most point of the string the curvature of the string is huge, which won't be captured well by numerical integration.
+
+In the case where $\beta$ is exactly $0$, the maximal extensions in both the $x$ and $y$ directions are then given by
+%
+\begin{align}
+    &|y_{\mathrm{min}}| = \frac{1}{2} (1 - y_F),& &x_{\mathrm{max}} = 0.&
+\end{align}
+
+Another limit to consider is the limit $\beta \gg 1$. Here we neglect exactly the other terms in the equations for $F$ and $\alpha$ than the ones we neglected before. From here it is a straight-forward calculation to show that
+%
+\begin{align}
+    &F = \frac{A}{\sin \alpha},& &F = -\frac{\beta}{2}x^2 - C,&
+\end{align}
+%
+for some constants $A$ and $C$. The form of $y(x)$ is a bit more complicated to calculate and is not expressible with elementary functions, but rather with hypergeometric functions. One such analytical solution is shown in \cref{fig:analytical}. The shape of the solution can be checked to be consistent with what we will later show numerically, and it furthermore predicts that $x_{\mathrm{max}}$ does attain some maximum value, a result that could be expected from conservation of string. It is however, hard to invert the function to get a precise numerical result to test against.
+
+An interesting case to consider is also $\beta \ll F$. Under this assumption we drop the $- \beta x \cos (\alpha)$ term in the equation for $F$ since it is small compared to $F$ itself (under the assumption that the derivative of $F$ is of a similar order of magnitude as $F$, which we can check a posteriori). And similarly we drop the  $\beta x \sin (\alpha) / F$ term of the equation for $\alpha$ as compared to $\dif \alpha / \dif s$. This leaves us in the same case as with the $\beta \ll 1$ approximation but for slightly different reasons. We saw that this case has a very singular solution, so the conclusion is that $F$ has to be of a similar  or smaller magnitude to $\beta$ cannot be too much larger that it, at least if we want numerical stability. Checking the assumption that $F$ is not some wild function whose value and derivative differ by orders of magnitude is true (which is the case for the hanging arch that characterizes the small beta limit) finishes the argument. 
+
+There are other asymptotic limits that one can consider, but they do not tell us much more about the numerics that we will continue with now.
+
+
+\section{Numerical Methods 1}
+
+In the solution of the first problem we can use the python library \texttt{scipy} and its built-in function \texttt{scipy.integrate.solve\_bvp} \cite{bvp}. This is an implementation of a 4th order collocation system with residual estimation. It actually requires an initial guess for the solution over the whole domain so to generate that we will use the Runge-Kutta 4th order integrator for some choice of the unknown initial conditions $F (s=0)$ and $\alpha (s=0)$. In this sense, viewed as a black box, overall we're basically doing a shooting procedure where we plug in some guess for $F (s=0)$ and $\alpha (s=0)$, and we iteratively try to find the solution that satisfies the final two boundary conditions $x (s=1) = 0$, $y (s=1) = y_F$, along with the automatically satisfied $x (s=0) = 0$ and $y (s=0) = 0$. Another thing to mention is that we're shooting from $(0, 0)$ upwards because of the choice of setup of the coordinate system.
+
+
+\section{Results 1}
+
+By playing around with the system it can be gleamed that the choice of initial angle with which to shoot is usually not that important, as long as it's close to the middle of the interval of interest. Initial angles should stay somewhat far away from complete vertical guess ($\pi/2$, $-\pi/2$) because in that case the string is less extended in the $x$-direction and this effectively goes into the regime of small centrifugal force, $\beta \ll 1$, which we know is singular.
+
+This weak dependence is circumstantial evidence that for each case checked there was only one possible $\alpha(s=0)$ that solved the system of equations with the boundary conditions considered. This, however, is obviously far from any kind of proof.
+
+Two criteria where used to check the accuracy of the integrator. One is calculating the length of the string from the $x$ and $y$ points after the integration. If the solution can be trusted this value should be as close to $1$, the defined length, as possible. The other criterion was the size of the force. For some solutions it can happen that the curve looks normal but the force $F$ is many orders of magnitude larger than any parameter that was put into the system; these solutions are, again, not to be trusted.
+
+As we have shown, solutions only exist when $F$ is of a similar order of magnitude as $\beta$ or less, it can never be much larger than it for our boundary conditions to be satisfied. \emph{The relative size of $F$ against $\beta$ is what determines the number of extrema in the solution.} Namely, the smaller $F$ is compared to $\beta$ the large the number of extrema is.
+
+We can see this in \cref{fig:few_curves_1,fig:force_1,fig:few_curves_2,fig:force_2,fig:few_curves_3,fig:force_3}. They consecutively show solutions with one, two and three extrema and the tension force in them. We see that for each family of solutions with a given number of extrema, the values of the force $F$ in the string compared to $\beta$ remain similar in magnitude even when $\beta$ varies over large intervals. In this way, by choosing the initial condition $F(s=0) = \beta/N$ for an appropriately chosen value of $N$ we can get a solution with arbitrarily many extrema. The choices made to obtain the above pictures were $N = 15$ for one extremum, $N = 35$ for two extrema, $N = 78$ for three extrema, and $N = 120$ for four extrema was also tested but is not pictured.
+
+From \cref{fig:force_1,fig:force_2,fig:force_3} we can also see a gradual increase in the force across the string which is not surprising for a hanging string.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{max_dev.png}
+    \caption{Maximal extensions from the $x$ and $y$ axes as a function of $\beta$. An inset graph shows the length deviation of the integration, again as a function of $\beta$, as a measure of trustworthiness.}
+    \label{fig:max_dev}
+\end{figure}
+
+Another thing to notice is that the string can't both have slack and have multiple extrema. So the maximal extension in $y$ is always $|y_{\mathrm{\min}}| = 0$ for multiple extrema, i.e. it's only an interesting quantity when we're in the single extremum regime.
+
+Numerically calculating the solutions, we get that smaller $\beta$ can't support many extrema. This can have one of two interpretations. Either a cutoff does exist for each number of extrema and for any $\beta$ below that cutoff there are no solutions with that number of extrema. Or it could just be the case that there is no cutoff, and we can't find solutions only due to the fact that we're getting too close to the singularity of the problem. This could be the case because, as mentioned before, the small $x$ limit and the small $\beta$ limit are equivalent, and this is indeed the case for more extrema; the more there are the smaller the amplitude of each individual extremum is.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{poincare_0.08.png}
+    \caption{Poincar\'e section for $E=0.08$. The initial conditions where we can expect non-chaotic orbits are the regions of higher dot density.}
+    \label{fig:poincare_1}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{poincare_0.16.png}
+    \caption{Poincar\'e section for $E=0.16$. The closer we get to the critical energy more parts of the phase space become chaotic.}
+    \label{fig:poincare_2}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{orbits_1.png}
+    \caption{Some examples of orbits for the H\'enon potential with smaller energies.}
+    \label{fig:orbits_1}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{orbits_3.png}
+    \caption{An example of an orbit for the H\'enon potential that has reflection symmetry but doesn't have threefold symmetry.}
+    \label{fig:orbits_3}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{orbits_2.png}
+    \caption{Some examples of orbits for the H\'enon potential with larger energies.}
+    \label{fig:orbits_2}
+\end{figure}
+
+Going back to $|y_{\mathrm{\min}}|$ and $x_{\mathrm{\max}}$ for solutions with a single extremum we have \cref{fig:max_dev}. It shows these quantities as a function of $\beta$ with a further inset graph of the length deviation as a function of $\beta$ as a measure of trustworthiness of the results. We wee that, as expected, $|y_{\mathrm{\min}}|$ lives inside the range $[0, (1 - y_F)/2 = 0.05]$ reaching the latter end in the limit of small $\beta$. It can also be seen that $|y_{\mathrm{\min}}|$ goes to zero very fast with it already being very small at $\beta=4$. For $x_{\mathrm{\max}}$ we also have a somewhat expected picture. We can extrapolate that it lives in the range $[0, \sim \! 0.196]$ (which is not quite visible since the convergence is slow compared to $|y_{\mathrm{\min}}|$), reaching the former in the small $\beta$ limit and continuing on to asymptotically reach the upper limit in the large $\beta$ limit that we analytically explored before. A kind of complementarity can be seen between $|y_{\mathrm{\min}}|$ and $x_{\mathrm{\max}}$, in that the larger the first the smaller the second. This is to be expected from the fixed length condition on the string.
+
+At values of $\beta$ around $2$, towards the beginning of the figure's interval, we already start seeing signs of the singularity's effect. The calculated function looks slightly discontinuous, but we also notice that the length deviations is getting larger, so this region cannot be taken too seriously.
+
+As an avenue for further investigation, there is the possibility of doing a change of variables that rescales the coordinates by $\beta$ itself to try and reach deeper into the $\beta \ll 1$ region.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{portrait.png}
+    \caption{Equipotentials of the H\'enon--Heiles potential.}
+    \label{fig:portrait}
+\end{figure}
+
+\section{Numerical Methods 2}
+
+As described in H\'enon and Heiles \cite{hh}, there is a generic way to sort orbits into periodic, quasiperiodic and chaotic. To sift out the chaotic orbits one needs to look at a Poincar\'e section of motion and see if it fills out the area allowed by energy conservation or not. Chaotic orbits would generically lie anywhere in this allotted area, while periodic and quasiperiodic orbits will generically only lie on certain curves in the area. 
+
+To differentiate periodic from quasiperiodic orbits, we can then look at the rotation rate of consecutive points on the section and see if they jump by rational multiples of $2 \pi$ around the origin; these are the periodic orbits.
+
+This however is impractical to do, since we would have trouble determining if the jump was truly a rational multiple because of numerical error.
+
+A better way to look for periodic orbits is to consider the problem as a boundary value problem where the boundary conditions are periodic, i.e. the initial and final points, and initial and final velocities are the same. We will then solve this problem the same way we did it in Problem 1 with the equations now being
+%
+\begin{align}
+    &\dot{x} = u,& &\dot{u} = -x -2xy,& \notag\\
+    &\dot{y} = v,& &\dot{v} = -y - x^2 + y^2,&
+\end{align}
+%
+and the boundary conditions being $x(t=0) = x(t=T)$, $y(t=0) = y(t=T)$, $u(t=0) = u(t=T)$ and $v(t=0) = v(t=T)$, where $T$ is the period of the orbit. The euqipotential surfaces of the potential considered here can be seen in \cref{fig:portrait}. From the density of the dashed lines we can see that the potential is quite flat near the middle and the steepness increases outside of the bounded region represented by the triangle. 
+
+The difficulty with this method of solving the problem as a BVP is that we need to be explicit about the period of the orbit upfront; this is a parameter that the integrator takes. This problem is not too difficult to overcome though because we can do a quick scan over a meaningful interval of periods and get a feel for which ones give sensible solutions.
+
+The Poincar\'e section, though, is still a relatively good way to differentiate between the chaotic and the non-chaotic orbits. To find it we will use \texttt{scipy}'s \texttt{solve\_ivp} method \cite{ivp} because it has the option of recording events, like crossings of a plane. In this case we'll be calculating the section for crossing the plane $x=0$. This choice leaves us with two more parameters for every energy, which we can choose to be $y$ and $\dot{y}$ and subsequently plot the section in the plane spanned by these two.
+
+
+\section{Results 2}
+
+\Cref{fig:poincare_1} shows the Poincar\'e section for the energy $E=0.08$. The regions where we can find non-chaotic orbits (either periodic or quasiperiodic) are the regions with higher dot density. This is because for those kinds of orbits, as mentioned before, we only move on a curve in the plane, meaning that we traverse that curve multiple times. The characteristic behavior for the chaotic orbits, on the other hand, is exactly the opposite; they're characterized by regions of sparse and scattered points. The colors are there to make the picture slightly clearer, and they roughly correspond to forcing motion along different curves (if in a non-chaotic regime) by choosing different initial conditions, i.e. a different starting point in the plane.
+
+A look at a Poincar\'e section of energy closer to the critical is shown in \cref{fig:poincare_2}. In it, we can see that less of the system bound to move on particular curves in the section and more of it is scattered.
+
+\Cref{fig:orbits_1} shows some examples of orbits gotten in this way for smaller values of the energy (relative to $1/6$). We see that some of them keep the triangular symmetry of the potential but some of them do not and can be more elongated or more spherical.
+
+\Cref{fig:orbits_3} shows an example where the symmetry of reflection around the $y$-axis, that the potential has, is preserved in the solution but the full threefold symmetry isn't. Finally, \cref{fig:orbits_2} shows orbits for energies close to $E = 1/6$ and shows that there is a tendency towards more threefold symmetry the closer we get to the critical value.
+
+\printbibliography
+
+\end{document}
