@@ -1,0 +1,281 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{femep.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+
+\begin{document}
+
+\title{Boundary Element Method}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+Using the Boundary Element Method (BEM) and working in 2D try to solve the following problems.
+
+\subsubsection*{Problem 1}
+
+Find the electrostatic potential in the vicinity of a long line of conducting metal. What is the charge distribution along the wire?
+
+\subsubsection*{Problem 2}
+
+Solve the problem of laminar fluid flow around an ellipsoidal obstacle parametrized by $x = \cos(t)$, $y = b \sin(t)$. The exact solution for the parallel component of velocity $v_{\parallel}$ close to the surface is known in this geometry and is given by
+%
+\begin{align}
+    v_{\parallel} = u_{\infty} \frac{(1 + b) y}{\sqrt{y^2 + b^4 x^2}},
+\end{align}
+%
+where $u_{\infty}$ is the fluid velocity far away from the obstacle.
+
+
+\section{Mathematical Setup}
+
+As discussed in lecture, the boundary element method makes use of the fact that some PDEs can be reformulated as boundary integral equations using the Green's function related to that PDE
+%
+\begin{align}
+    u(\vec{r}) = \int_{\partial D} \frac{\partial u(\vec{r}_0)}{\partial n} G(\vec{r}, \vec{r}_0) \dif S_0 \notag\\
+    - \int_{\partial D} u(\vec{r}_0) \frac{\partial G(\vec{r}, \vec{r}_0)}{\partial n}  \dif S_0.
+\end{align}
+%
+This reformulation means that instead of focusing on the domain $D$, one can simply work on the boundary $\partial D$ only. Specifically, one doesn't need to discretize the whole domain, but only the boundary. To be able to work with this we need to know the Green's function of our equation. In both our problems we're fundamentally solving the Poisson equation for which the Green's function in 2D is given by
+%
+\begin{align}
+    G(\vec{r}, \vec{r}_0) = \frac{1}{2 \pi} \ln |\vec{r} - \vec{r}_0|.
+\end{align}
+
+For the electrostatic case we're solving the problem for the potential which is directly given by the Poisson equation. Moreover, our boundary conditions are Dirichlet since we're dealing with a metal with a given constant potential on its surface. Since we will divide the boundary into panels with a constant surface charge density $\sigma$ (rather than working with point sources along the boundary), we need to convert our Green's function by integrating it over one such panel. Thus, we get
+%
+\begin{align}\label{eq:G0}
+    G_0(x, y) = \frac{1}{2 \pi} \left[ y \arctan\frac{x_+}{y} - y \arctan\frac{x_-}{y} \right. \notag\\
+    \left. + \frac{x_+}{2} \ln (x_+^2 + y^2) - \frac{x_-}{2} \ln (x_-^2 + y^2) - l\right],
+\end{align}
+%
+where $l$ is the length of the panel and $x_{\pm} = x \pm l/2$. This equation is written in the local coordinate system of the panel in which it lies along the $x$-axis between $\pm l/2$.
+
+To calculate the surface charge density $\sigma_i$ of the $i$-th panel such that it satisfies the boundary conditions, we need to look at the effect of all other panels on it. Doing this for all of the panels amounts to solving a system of linear equations
+%
+\begin{align}
+    &G \vec{\sigma} = \vec{u},& &\vec{u},\vec{\sigma} \in \mathbb{R}^{N},& &G \in \mathbb{R}^{N \times N},&
+\end{align}
+%
+where $N$ is the number of panels, $\vec{u}$ is the constant value of the potential at each panel and $G$, with elements $G_{ij}$, represents the $i$-th panel's effect on the $j$-th panel.
+
+Calculating $G_{ij}$ consists of finding the distance vector between the centers of the two panels $\vec{r}_j - \vec{r}_i$ in the ``LAB'' frame, rotating this vector by an angle $-\phi_i$, where $\phi_i$ is the tilt angle of the $i$-th panel, and finally using \cref{eq:G0} to calculate the potential at $j$ due to $i$ as $G_0\left(R_{\phi_i}(\vec{r}_j - \vec{r}_i)\right)$, where
+%
+\begin{align}
+    R_{\phi} = \begin{bmatrix}
+        \cos \phi & \sin \phi \\
+        -\sin \phi & \cos \phi
+    \end{bmatrix}.
+\end{align}
+
+After calculating $\vec{\sigma}$ by this procedure, the solution at any point is defined, in a similar fashion, as
+%
+\begin{align}
+    u(\vec{r}) = \sum_{i=1}^{N} \sigma_i G_0\left(R_{\phi_i}(\vec{r} - \vec{r}_i)\right).
+\end{align}
+
+
+For the hydrodynamic problem the quantity that satisfies Poisson's equation is the velocity potential $\varphi$ defined by $\vec{v} = \nabla \varphi$. The boundary condition is on the velocity normal to the surface, i.e. $\partial \varphi / \partial n = 0$ and is obviously of Neumann type.
+
+For this problem though, we will choose to not work with the potential $\varphi$ directly but with the components of the velocity since, in the end, this is what we want. The cost incurred for this choice is that just as we were rotating the coordinates previously, we now also need to rotate the components of the velocity vector.
+
+In the local coordinate system of the panel we can calculate $v_{\perp}$ and $v_{\parallel}$ by simply differentiating \cref{eq:G0}
+%
+\begin{align}
+    v_{\perp}^{0}(x,y) &= \frac{1}{2 \pi} \left[ \arctan\frac{x_+}{y} - \arctan\frac{x_-}{y}\right] \notag\\
+    v_{\parallel}^{0}(x,y) &= \frac{1}{4 \pi} \ln \frac{x_+^2 + y^2}{x_-^2 + y^2}
+\end{align}
+%
+When working with these two equations we must be careful to avoid the singularities that appear at the ends of the panel, namely $x_{\pm}=0,y=0$. These were previously avoided just by virtue of working with the panels instead of point sources.
+
+With the logic of the $\sigma$s being sources or sinks to compensate the flow imposed by $u_{\infty}$ we can calculate $G$ similarly as before, but with the added complication of more rotations. Rotating into the $i$-th local coordinate system we have
+%
+\begin{align}
+    \vec{v}^i &= (v_{\perp}^i, v_{\parallel}^i) \\
+    &= \left(v_{\perp}^{0}\left(R_{\phi_i}(\vec{r}_j - \vec{r}_i)\right), v_{\parallel}^{0}\left(R_{\phi_i}(\vec{r}_j - \vec{r}_i)\right)\right). \notag
+\end{align}
+%
+The boundary condition only concerns the normal component of velocity in the $j$ local system so rotating back and remembering that $v_{\perp}$ transforms like a $y$ component we get
+%
+\begin{align}
+    (v_{\perp}^j, v_{\parallel}^j) = R_{\phi_i - \phi_j} \vec{v}^i.
+\end{align}
+%
+The contribution is then $G_{ij} = v_{\perp}^j$.
+
+The equivalent of the vector $\vec{u}$ is now given by the projection of the velocity field $u_\infty$ onto the normal to the panel as
+%
+\begin{align}
+    u_i = - (u_{\infty,x} \sin \phi_i - u_{\infty,y} \cos \phi_i).
+\end{align}
+
+Having again solved for the sources and sinks $\vec{\sigma}$, we can get the velocity field at any point $\vec{r}$ as
+%
+\begin{align}
+    (v_y, v_x) = \sum_{i=1}^{N} \sigma_i R_{\phi_i}\vec{v}^i(R_{\phi_i}(\vec{r} - \vec{r}_i)).
+\end{align}
+
+\section{Numerical details}
+
+To get a discretization of the boundary, we choose some parametrization and generate points that lie on the boundary. These points are then the ends of our panels. Each panel will be represented by a set of $4$ numbers representing the LAB $x$ and $y$ coordinates of its center, the tilt angle with respect to the LAB $x$ axis and finally its length. These $4$ numbers are calculated from the difference of the endpoints that specify one panel.
+
+For the numerical solutions of the systems of equations we will use the built-in method \texttt{scipy.linalg.solve}.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{times_fit.png}
+    \caption{Fit for the evaluation time of BEM for different numbers of panels.}
+    \label{fig:times_fit}
+\end{figure}
+
+\section{Results}
+
+Running a quick test on the evaluation time of our implementation for different numbers of panel we generate \cref{fig:times_fit}. It shows that the dependence of the evaluation time is almost exactly quadratic in the number of panels. This could have been expected since BEM needs to solve an $N \times N$ matrix system and the matrix $G$ is full because every panel interacts with every other panel and not just its neighbors as with FEM.
+
+
+Continuing on with the problem of the potential of a long metal wire as given in Problem 1, all we need to do is follow the procedures described before to generate the panels and solve the system.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{hline_profile.png}
+    \caption{Potential profile for a line conductor, $N=29$.}
+    \label{fig:line_profile}
+\end{figure}
+
+Solving with $N=29$ panels, we get \cref{fig:line_profile} which shows the contours of the potential. Even with a small number of panels the potential for the line qualitatively looks good. This is because the line boundary has no curved parts, which are harder to approximate with panels. The most troublesome points are near the edge of the line; this is where defects start appearing. One such example is \cref{fig:line_profile_alt}, where we can see small equipotential surfaces around the edges, meaning that the potential there is higher that it should be.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{hline_profile_alt.png}
+    \caption{Potential profile for a line conductor, $N=9$.}
+    \label{fig:line_profile_alt}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{sigma_x.png}
+    \caption{Charge distribution on the line.}
+    \label{fig:sigma_x}
+\end{figure}
+
+We're also interested in the charge density $\sigma(x)$ along the line. We are only calculating this quantity at the center of the panels so even if it is correct at that point, the graph would look jagged. To avoid this we increase the number of panels to $N=99$ and generate \cref{fig:sigma_x}. We see that it reaches a very high value near the endpoints of the line. Intuitively, we do expect a divergence near those points since we know that charge is more concentrated near sharp points of a conductor and if this was a physical object its thickness would become important there.
+
+Having developed the machinery, we can apply it to many different kinds of boundaries. One step away from the conducting line are the L-shaped conductor and the capacitor shown in \cref{fig:L_profile,fig:capacitor_profile}. For the capacitor profile as in the case of a usual capacitor the plates are at different potentials.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{L_profile_100.png}
+    \caption{Potential profile for an L-shaped conductor.}
+    \label{fig:L_profile}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{capacitor_profile_100.png}
+    \caption{Potential profile for a capacitor.}
+    \label{fig:capacitor_profile}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{circle_profile_50.png}
+    \caption{Potential profile for a circle.}
+    \label{fig:circle_profile}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{sigma_x_circle_100.png}
+    \caption{Charge density for the circle. It says relatively constant but the variations remain.}
+    \label{fig:sigma_x_circle}
+\end{figure}
+
+A further case one can try is the case of a circular boundary. This is shown in \cref{fig:circle_profile}. We see that, as we could expect, the boundary has the effect of shielding the inside from the outside. We know that conductors distribute their charge on the boundary in such a way as to have no field inside. The constancy of the potential inside is exactly a manifestation of that phenomenon. Outside of the sphere the potential looks like the spherically symmetric potential of a point charge centered at the origin with the main difference being that the zero of the potential is now not at infinity but fixed by the boundary. Another thing that we notice with a surface that is curved is that near the boundary the equipotential lines look very distorted. The distance at which this effect is noticeable is of the same order as the panel size since the closer we are to one panel the more the potential looks like that of the straight line. Because of the symmetry of the circle, we would expect the charge density to remain the same as we go around. This is overall the case, but there are variations of $\sim\!2\%$ that don't go away as we increase the number of panels. These are shown in \cref{fig:sigma_x_circle}.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{flow_circular_unfiltered.png}
+    \caption{Fluid flow around a circular obstacle.}
+    \label{fig:flow_circular_unfiltered}
+\end{figure}
+
+For the second problem we're interested in the flowing of fluid past an obstacle. The prototypical example of this would be a circular (in 3D, cylindrical) obstacle. Following the described procedure we calculate the flow profile around a circular obstacle and see that it is given by \cref{fig:flow_circular_unfiltered}. We notice that the flow profile looks mostly right except inside the obstacle, where instead of cancelling the uniform flow is doubled. This is at first sight surprising but maybe something that we could have expected. If we think back to the source/sink analogy for the $\sigma$s, we can see that if we place a source/sink on the boundary such that the velocity is $0$ on one side, then on the other side we will always get addition instead. To avoid this we will not draw the velocity field inside the obstacle.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{flow_circular.png}
+    \caption{Fluid flow around a circular obstacle.}
+    \label{fig:flow_circular}
+\end{figure}
+
+After excluding those, the profile is shown in \cref{fig:flow_circular}, and it looks like the expected flow around a circular obstacle. The velocity field is tangential to the surface and close to it and far away it follows the prescribed $\vec{u}_{\infty} = (1, 0)$. The fluid is moving fastest at the part where the circle is widest from the point of view of the flow, which is again expected.
+
+It's not too hard to repeat the same exercise with an ellipse. In the case of the ellipse the direction of $u_\infty$ matters because the object is no longer rotationally symmetric. The cases when $\vec{u}_\infty$ is aligned with one of the axes and when it is at a $45^{\circ}$ degree angle with the axes are shown in \cref{fig:flow_ellipse_1,fig:flow_ellipse_2,fig:flow_ellipse_3}. The ellipse used to generate them is an ellipse with semi-major axis $a=1.5$ and semi-minor axis $b=1$.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{flow_ellipse_1.png}
+    \caption{Fluid flow around an ellipsoidal obstacle with $\vec{u}_\infty$ along the major axis.}
+    \label{fig:flow_ellipse_1}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{flow_ellipse_2.png}
+    \caption{Fluid flow around an ellipsoidal obstacle with $\vec{u}_\infty$ not aligned with an axis.}
+    \label{fig:flow_ellipse_2}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{flow_ellipse_3.png}
+    \caption{Fluid flow around an ellipsoidal obstacle with $\vec{u}_\infty$ along the minor axis.}
+    \label{fig:flow_ellipse_3}
+\end{figure}
+
+Using the parametrization of the ellipse given in the problem statement we can rearrange the formula for $v_\parallel$ as
+%
+\begin{align}\label{eq:vperp}
+    v_\parallel = \frac{(1 + b) \sin t}{\sqrt{b^2 - (b^2 - 1) \sin^2 t}}
+\end{align}
+
+Calculating the parallel component of velocity near the surface with the method and comparing it with the analytical value we get \cref{fig:vperp}. We see that they are mostly in agreement, except close to the maximum, where the analytical curve is steeper.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{v_para_t.png}
+    \caption{Parallel velocity component $v_{\parallel}$ near the surface as a function of the parameter along the ellipse $t$. Shown in blue is the analytical results given by \cref{eq:vperp}}
+    \label{fig:vperp}
+\end{figure}
+
+
+
+\end{document}
