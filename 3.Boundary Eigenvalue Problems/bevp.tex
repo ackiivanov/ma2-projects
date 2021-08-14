@@ -1,0 +1,280 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{bevp.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+\newcommand{\diff}{\mathop{}\!\mathrm{d}}
+
+\begin{document}
+
+\title{Boundary Eigenvalue Problems}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+\subsubsection*{Problem 1}
+
+Investigate methods to solve the radial part of the Sch\"odinger equation for the Coulomb potential. The dimensionless version of that equation is
+%
+\begin{align}\label{eq:1diffeq}
+    \left[ - \frac{\mathrm{d}^2}{\dif x^2} -\frac{2}{x} + \frac{l(l+1)}{x^2} - E \right] R(x) = 0,
+\end{align}
+%
+with the boundary conditions $R(0) = 0$ and $R(\infty) = 0$.
+
+\subsubsection*{Problem 2}
+
+The propagation of monochromatic light in an optical fiber is described by a Helmholtz equation, which in dimensionless form is
+%
+\begin{align}
+    \left[ \nabla^2 + n^2(\vec{r}) k^2 \right] \Psi(\vec{r}) = 0,
+\end{align}
+%
+where $n(\vec{r})$ is the index of refraction and $k$ is the single wavenumber that describes the monochromatic light. To look for rotationally symmetric solutions to this problem we can use the ansatz
+%
+\begin{align}
+    \Psi(x) = \frac{R(x)}{\sqrt{x}} \exp(i \lambda z),
+\end{align}
+%
+where we have decomposed the function in cylindrical coordinates in which $x$ is the radial direction. This ansatz transforms the equation into
+%
+\begin{align}\label{eq:2diffeq}
+    \left[ \frac{\mathrm{d}^2}{\dif x^2} + \frac{1}{4x^2} + n^2(x)k^2 - \lambda^2 \right] R(x) = 0.
+\end{align}
+
+The model for the refractive index that we will use is
+%
+\begin{align}\label{eq:2n}
+    n(x) = \begin{cases}
+        2 - \frac{1}{2}x^2 & x < 1\\
+        1 & x \geq 1
+    \end{cases}.
+\end{align}
+
+For this model calculate the dispersion relation for $0.8 < k < 10$ and determine which values of $k$ support only a single solution $\lambda$ (the regime of the so-called single mode fiber).
+
+
+\section{Mathematical Setup}
+
+The Schr\"odinger equation of Problem 1 is famous as the radial equation for the hydrogen atom. It is readily solved for any $l$ and $n$, where $n$ numbers the eigenvalues, and a few of the solutions are
+%
+\begin{align}
+    R_{1,0}(x) &= 2 x \exp(-x)\\
+    R_{2,0}(x) &= \frac{1}{\sqrt{2}} x \left(1 - \frac{x}{2} \right) \exp(-x/2)\\
+    R_{1,0}(x) &= \frac{1}{\sqrt{24}} x^2 \exp(-x/2).
+\end{align}
+
+The energies are given by
+%
+\begin{align}\label{eq:ergs}
+    E_{n} = - \frac{1}{n^2},
+\end{align}
+%
+and don't depend on $l$. The numbers $n$ and $l$ are related by the relation $l \leq n - 1$, so that if we choose a particular $l$ only $n$ that are greater or equal to $l + 1$ are allowed.
+
+\section{Numerical Methods}
+
+To solve the differential equations, we will mostly use Numerov's method \cite{numerov} for solving second order differential equations that don't have a first order term. For linear differential equations, as in our case, the method is explicit. Given the differential equation
+%
+\begin{align}
+    \frac{\mathrm{d^2} y}{\dif x^2} + k^2(x) y(x) = 0
+\end{align}
+%
+the method replaces it with the recursive relation
+%
+\begin{align}
+    y_{n+1} = \frac{2 \left( 1 - \frac{5h^2}{12} k_{n}^2 \right) y_{n} - \left( 1 + \frac{h^2}{12} k_{n - 1}^2 \right) y_{n - 1}}{1 + \frac{h^2}{2} k_{n+1}^2},
+\end{align}
+%
+where $h$ is the step size and indexed quantities like $y_n$ mean the quantity at the point $x_n$. In our case $k(x)$ is divergent at $x=0$, so we will instead start at $x=h$. Either way, we have to determine the first two values $y_1$ and $y_2$ to even start the procedure. Since we want a bounded solution at the origin, we expand it in a polynomial starting at a high enough order to cancel divergences and give a sensible solution. The number of terms of this series that we want to compute is up to the order of our method; any more than that would be unnecessary.
+
+In the case of Problem 1 this gives
+%
+\begin{align}
+    R(x) \sim \begin{cases}
+        x - x^2 + \frac{1 - E}{6}x^3 + \frac{2E - 1}{18}x^4 & l=0\\
+        x^{l+1}\left( 1 - \frac{x}{l+1} + \frac{(1 - 11E) x^2}{18(2l+3)}\right)& l \neq 0
+    \end{cases},
+\end{align}
+which holds for $x \ll 1$.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{sweep1_fd.png}
+    \caption{Eigenvalue sweep for the radial equation for $l=0$. Energy eigenvalues appear as spikes in the response curve, which is just the maximal amplitude of a solution for each energy.}
+    \label{fig:sweep1_fd}
+\end{figure}
+
+To normalize the wavefunctions for Problem 1 we will use the Simpson method of integration, which is precise enough for our purposes, i.e. is of about the same error as the global error of the integration methods we're using.
+
+When searching for an eigenvalue on a given interval we will use bisection on the shooting endpoint.
+
+If we were handling a problem for which we didn't know the position of the eigenvalues analytically, we would need to do an eigenvalue sweep to see where exactly we need to focus our search efforts. This can be done in many ways like (the bisection inspired) looking at when the solution switches sign at the endpoint. But one interesting way to do it is to use a kind of linear difference method to solve the differential equation. More often than not linear difference methods turn the differential equation into a matrix equation by using the difference formulas for the derivatives (for more details see \cite{Zhou1993}). The Numerov method is an example where only a recurrence relation is necessary, but generally this is not the case. The interesting property solving the problem as a matrix equation has for boundary problems like ours is that if you give the linear difference method the boundary conditions as exactly $0$ on both endpoints it will converge to the trivial solution $R(x) = 0$. However, if you give it a value that is not exactly $0$ but off by $\epsilon$ on one end then something more interesting happens. The solutions for which the input eigenvalue is wrong are suppressed and remain typically of the order of $\epsilon$ but solutions which have the eigenvalue closer to the right number are enhanced and have larger amplitudes than their neighboring eigenvalue guesses. In this way we get a resonance-like structure, where eigenvalues appear as spikes in the response curve (i.e. the maximal amplitude). Doing the above-described procedure for the Schr\"odinger equation at hand produces \cref{fig:sweep1_fd}, which reproduces the well known energy eigenvalues \cref{eq:ergs}.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{sols1.png}
+    \caption{The first three solutions of \cref{eq:1diffeq} that we will be testing against.}
+    \label{fig:sols1}
+\end{figure}
+
+Any sweep like the previous will, for this particular problem, mainly be limited by the value of $x_{\mathrm{max}}$. This is because if it's too small then we simply don't fit all of the oscillatory bits into our interval which is supposed to mimic $[0, \infty]$. For the particular plot shown we see that $x_{\mathrm{max}} = 70$ fits eigenvalues up to $n=6$.
+
+\section{Results I}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{adot.png}
+    \caption{Absolute error in solutions with different initial condition on the derivative compared to the curve with the initial condition $\dot{R}(0) = 1$ when shooting from $0$.}
+    \label{fig:adot}
+\end{figure}
+
+The Schr\"odinger equation is a linear equation, which for our purposes implies that if $y$ is a solution to it then $\alpha y$ is also a solution to the equation for some constant $\alpha$. For our shooting method we're using the initial conditions $y(0) = 0$ and $y'(0) = \beta$ to get a solution $y$. However, from the linearity $y/\beta$ is also a solution but now with initial conditions $y(0) = 0$ and $y'(0) = 1$, and since $\beta$ only came into the solution through the initial conditions, this does not depend on $\beta$ in any way. So, abstractly, we could choose beta to be anything and all it would change is the normalization of the solution. Of course, in practice the derivative initial condition can't be just anything because we're limited by numerical error, especially since part of the solution is exponential. \Cref{fig:adot} shows the situation for initial conditions separated by a few orders of magnitude. We see that small values generally do much worse and that at anything from $\dot{R}(0) = 1$ and up is already at the level of the tolerance with which we're shooting.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{adot_bwd.png}
+    \caption{Absolute error in solutions with different initial condition on the derivative compared to the curve with the initial condition $\dot{R}(0) = 1$ when shooting from $\infty$.}
+    \label{fig:adot_bwd}
+\end{figure}
+
+Shooting from $\infty$ (which for the purposes of this comparison is again at $x_{\mathrm{max}} = 20$) tells a somewhat different story for this. The absolute error in this case is shown in \cref{fig:adot_bwd}. The hierarchy of values is the same as before, so we again don't want to go too small with $\dot{R}(0)$, but now their errors are much smaller.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{error.png}
+    \caption{Absolute error for first three solutions compared to the analytically calculated function when shooting from $0$. Tolerance at the endpoint shown in black.}
+    \label{fig:error}
+\end{figure}
+
+\Cref{fig:error} shows the error in the first three solutions compared to the analytical solution when shooting from $0$. The tolerance at the endpoint is shown in black. We can see that the first solution does the best while the higher two have higher error than expected. This is because of $x_{\mathrm{max}}$; if we set it to too small a value we get worse solutions if it happens that those solutions haven't decayed enough at that point. Another effect of the finiteness of $x_{\mathrm{max}}$ is that at the right endpoint we will always see the error grow since we're setting to zero a quantity that is exponentially small but non-zero. The plot for shooting from $\infty$ looks almost identical.
+
+The spikes in the figures plotting the error above are artifacts of plotting with a logarithmic scale. They come about when the calculated and analytical curves cross each other.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{error_y_xmax.png}
+    \caption{Maximal absolute error for first three solutions compared to the analytically calculated solutions as a function of the endpoint $x_{\mathrm{max}}$ when shooting from $0$. $\epsilon$ denotes the tolerance for bisection.}
+    \label{fig:error_y_xmax}
+\end{figure}
+
+As described above, when we're solving the equation we go to a maximal value $x_{\mathrm{max}}$ and apply the boundary condition there instead of at $x=\infty$. This means that we have introduced a new parameter in to the problem, and we would like to know how the solutions depend on that parameter. Firstly we test how the wavefunctions themselves depend on the maximal distance that we integrate to. This is shown in \cref{fig:error_y_xmax}, where we see the maximal absolute error in the wavefunction as a function of $x_{\mathrm{max}}$ plotted in a log scale. As expected, we see that at first the larger $x_{\mathrm{max}}$ is the better, since we're going more and more into the exponential region; in fact it's exponentially better. However, the curve for $n=1$, $l=0$ shows us another fact of reality. We can't make $x_{\mathrm{max}}$ too large because then the exponentially growing part of the shooting solution becomes too hard to control and bisection can't converge to the desired accuracy. The plateau region between these, is the region where we're mainly limited by the tolerance of bisection.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{error_erg_xmax.png}
+    \caption{Maximal absolute error for the energy of the first three solutions compared to the analytically calculated energy as a function of the endpoint $x_{\mathrm{max}}$ when shooting from $0$. $\epsilon$ denotes the tolerance for bisection.}
+    \label{fig:error_erg_xmax}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{xmax_n.png}
+    \caption{The number of eigenvalues we can calculate as a function of the maximal distance $x_{\mathrm{max}}$.}
+    \label{fig:xmax_n}
+\end{figure}
+
+A further insight into this can be gained from investigating the dependence of the energies on $x_{\mathrm{max}}$. This is shown in \cref{fig:error_erg_xmax}. We see a similar trend as before, but now the effect of bisection not converging to the prescribed tolerance can't be seen. This is because bisection cares about the endpoint's error and when it doesn't converge it's because the variation of the energy that bisection wants to achieve to change the behavior of the endpoint is beyond double precision. The two higher energies have not yet reached this plateau and would have smaller error if $x_{\mathrm{max}}$ was increased further. This difference between the behavior of the solution and the eigenvalue is good to keep in mind because if we're only looking for the eigenvalue then we can forget about getting the function right and stop bisecting whenever we reach the tolerance we want in the eigenvalue. At that point \emph{the solution might look very divergent, but the eigenvalue will be correct.}
+
+Finally, we can also show how many eigenvalues we get for a given $x_{\mathrm{max}}$. \Cref{fig:xmax_n} shows this behavior for the first three values of $l \in [0, 1, 2]$. It shows what the different minimal $x_{\mathrm{max}}$ values are to get the desired amount of the eigenvalues, however, we usually don't want to choose the minimal values since the eigenvalue and solution would probably not be good enough at that point; we always want to be somewhat over the minimal. Here we have taken into account that the quantum number $n$ has to be $\geq l + 1$ and started counting the eigenvalues from $l + 1$ upwards.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{error_erg_h.png}
+    \caption{Maximal absolute error for the energy of the first three solutions compared to the analytically calculated energy as a function of the step size $h$ when shooting from $0$. $\epsilon$ denotes the tolerance for bisection.}
+    \label{fig:error_erg_h}
+\end{figure}
+
+We also expect the energy eigenvalue error to depend on the step size $h$ that we integrate with. This dependence is shown in \cref{fig:error_erg_h}. As per usual, small step sizes work best and the larger the step size the less and less accurate we are. On the lower end we're limited by the bisection tolerance. At relatively small step sizes the solution with $n=2$, $l=0$, which has one more oscillation than the other two, has the most error, which is to be expected. 
+
+\section{Mathematical Setup II}
+
+For the second problem we're solving \cref{eq:2diffeq} with the refractive index dependence \cref{eq:2n}. It's useful to first explore the limiting cases of this equation.
+
+For large values of the parameter $x \gg 1$ the equation reduces to
+%
+\begin{align}
+    \frac{\mathrm{d}^2 R}{\dif x^2} \sim - (k^2 - \lambda^2)R(x).
+\end{align}
+
+This equation famously has two types of solutions --- exponential and oscillatory --- depending on the interplay between $\lambda$ and $k$. We're interested in the exponential ones since we don't want the light to leak out of our optical fiber. This means that we should look for solutions with $\lambda > k$ and furthermore it fixes our boundary condition to $R(\infty) = 0$ 
+
+For small values of $x \ll 1$, on the other hand, we have the equation
+%
+\begin{align}
+    \frac{\mathrm{d}^2 R}{\dif x^2} \sim - \left(\frac{1}{4x^2} + 4k^2 - \lambda^2\right) R(x) = 0,
+\end{align}
+%
+where we have kept both the divergent $1/x^2$ term and the constant terms. Again, this equation has two types of solutions depending on the relative values of $\lambda$ and $k$, the oscillatory ones now being given by the combination $\sqrt{x}J_0(\sqrt{4k^2 - \lambda^2} \, x)$ while the exponential ones being given by the combination $\sqrt{x}I_0(\sqrt{\lambda^2 - 4k^2} \, x)$. The condition for which one we have is, of course, given by $\lambda < 2k$ or $\lambda > 2k$ as can be seen by the square root. However, managing to match a growing exponential like $I_0$ onto a decaying exponential outside of the fiber is probably not possible, so we should expect the solutions to be oscillatory. This is something we can check numerically later. Either way this gives us another boundary condition for our equation $R(0) = 0$. Both boundary conditions are the same as in the case of the Schr\"odinger equation of Problem 1.
+
+This being the case, we will use the same numerical approaches we used for Problem 1.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{some_sols.png}
+    \caption{The solutions to \cref{eq:2diffeq} for $k=8.0$; different $\lambda$ give different amounts of nodes.}
+    \label{fig:some_sols}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{sweep2_fd.png}
+    \caption{Eigenvalue sweep for the optical fiber at the value $k=9.5$ on the interval $[k, 2k]$.}
+    \label{fig:sweep2_fd}
+\end{figure}
+
+\section{Results II}
+
+Armed with the boundary conditions and equation, all that is left to do is to solve it for different values of $k$ and see which eigenvalues $\lambda$ we get.
+
+A sampling of solutions is shown in \cref{fig:some_sols}. We see that consecutive solutions have consecutive amounts of nodes, which shouldn't be too surprising since \cref{eq:2diffeq} would be a Sturm-Liouville problem if it weren't for the discontinuity in $n(x)$, which seems to not destroy this particular property.
+
+Employing the previous method to do an eigenvalue sweep for $k = 9.5$ we get \cref{fig:sweep2_fd}. We see that we get $5$ different eigenvalues. The drop-off after the fifth eigenvalue is a representation of the fact that at that point the solutions look nothing like a decaying exponential at high values. The same method for $k = 4$ gives only two solutions, so the number of solutions obviously depends on the value of $k$. This is an indication that we have different branches of the dispersion relation, which isn't unexpected since the whole reason to look for single mode fibers is if there are multiple modes.
+
+Searching for eigenvalues with $\lambda > 2k$ didn't give any results numerically for the region that we're working in, namely $[0.8, 10]$, which partially confirms our earlier suspicion that it can't be done. So we are only interested in looking for eigenvalues in the region $\lambda \in [k, 2k]$. Searching for smaller $k$ is harder since the effect of $x_{\mathrm{max}}$ being finite becomes more and more of a problem.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{dispersion.png}
+    \caption{The dispersion relation $\lambda(k)$ of the optical fiber for the interval $k \in [0.8, 10]$.}
+    \label{fig:dispersion}
+\end{figure}
+
+Since we would like to send signals down this optical fiber, we're interested in the dispersion relation that it has. We can calculate this in the form $\lambda(k)$. In this way, we produce \cref{fig:dispersion}. It shows the region of interest between $k$ and $2k$ in gray and all the possible branches within it on the interval $k \in [0.8, 10]$. The highest values of $\lambda$ that are solutions have only $0$ nodes (where we don't count the zeros at $x=0$ and $x=\infty$), increasing in number as we go down. Since it is most useful we are looking for the single mode regime. This is delineated by the black line in the picture and has the value $k_{\mathrm{1mode}}^{\mathrm{max}} = 2.761$. The separate modes have a linear dispersion relation to a high approximation, only curving a small amount the closer they are to the line $\lambda = k$. In the limit of large $k$ their slope seems to tend to $2$ same as the slope of the upper bound $2k$.
+
+The least trustworthy points are the ones that are extremely close to the line $\lambda = k$. This is because they have a very shallow slope for the exponential decay and are most affected by the fact that $x_{\mathrm{max}}$ is finite. Thus, even though we could find the limiting value $k_{\mathrm{1mode}}^{\mathrm{max}}$ to a much higher precision if we were to try, this value wouldn't truly be that for the actual problem but just an artifact.
+
+We also see that below $k=0.8$ we're reaching the end of the $0$-node mode and reaching --- what would in a waveguide be called --- the frequency gap; below that we don't expect to have viable solutions. There may be solutions which are artifacts of the fact that we're using a finite $x_{\mathrm{max}}$. A more exact value can be calculated to be $k_{\mathrm{0mode}}^{\mathrm{max}} = 0.805$, but again these eigenmodes appear at threshold and the value can't be determined that exactly anyways.
+
+Similarly, the value for the appearance of the third mode is calculated to be $k_{\mathrm{2mode}}^{\mathrm{max}} = 4.862$, the one for the appearance of the fourth mode as $k_{\mathrm{3mode}}^{\mathrm{max}} = 6.874$ and so on.
+
+\printbibliography
+
+\end{document}
