@@ -1,0 +1,417 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{femep.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+
+\begin{document}
+
+\title{Finite Element Method: Eigenvalue Problems}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+\subsubsection*{Problem 1}
+
+Using finite element methods find the first few eigenvalues of a semicircular membrane. Extrapolating the solution to high density meshes determine the accuracy of this method. Compare this result with the well known fact that the aforementioned eigenvalues are simply the squares of the zeros of the Bessel $J_m$ functions.
+
+\subsubsection*{Problem 2}
+
+Estimate the eigenvalues again, now using the Galerkin method with the approximate basis set
+%
+\begin{align}
+    \left\{ r^{m+n} (1 - r) \sin(m \phi) \right\}_{m=1, \cdots, M}^{n=0, \cdots, N}.
+\end{align}
+
+\subsubsection*{Problem 3}
+
+Find the eigenmodes of a membrane with the shape shown in \cref{fig:Fsetup}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.27]{setup.png}
+    \caption{Shape of the membrane on which we're solving Problem 3.}
+    \label{fig:Fsetup}
+\end{figure}
+
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.2]{trial_fs.png}
+    \caption{Trial functions for FEM.}
+    \label{fig:trial_fs}
+\end{figure}
+
+\section{Mathematical Setup}
+
+As in the previous task with FEM, we will be using a mesh on the domain of interest, triangulating it and on top of that expanding each function of interest in the basis of simplest possible functions --- the functions $\phi_i$, which are centered at the point $(x_i, y_i)$ and are best described by \cref{fig:trial_fs}.
+
+
+Defining the inner product
+%
+\begin{align}
+    \braket{f, g} = \int_{D} f g \dif S,
+\end{align}
+%
+we rewrite the eigenvalue problem $\nabla^2 u = - \lambda u$ as
+%
+\begin{align}
+    \braket{\nabla u, \nabla u} - \lambda \braket{u, u}=0.
+\end{align}
+
+Expanding $u$ as
+%
+\begin{align}
+    u = \sum_{i=0}^{N_N} c_i \phi_i,
+\end{align}
+%
+where $N_N$ is the number of nodes we get the generalized matrix eigenvalue equation
+%
+\begin{align}
+    A \vec{c} = \lambda B \vec{c},
+\end{align}
+%
+where $A, B \in \mathbb{R}^{N_N \times N_N}$ and 
+%
+\begin{align}
+    &A_{ij} = \braket{\nabla \phi_i, \nabla \phi_j},& &B_{ij} = \braket{\phi_i, \phi_j}.&
+\end{align}
+
+We will again use a triangle based organization of the problem. Each node will be given a global index $i \in [1, N_N]$, which fixes a permutation of the rows/columns of the matrices $A$ and $B$. Furthermore, we will index the triangles with an index $t \in [1, N_T]$. Within each triangle the vertices will also have a local index $m \in [1, 2, 3]$, so that each triangle is defined by a relation between the local and global indices of the vertices that make it up.
+
+To build the matrices we will iterate through the triangles and slowly add in all the interactions. For two points with local indices $m$ and $n$ in a given triangle $t$, the integration from the inner product gives the contribution
+%
+\begin{align}
+    A^{t}_{mn} = \frac{1}{4 S_{t}}\left[ (y_{m+1} - y_{m+2})(y_{n+1} - y_{n+2}) \right. \notag\\ \left. + (x_{m+2} - x_{m+1})(x_{n+2} - x_{n+1}) \right],
+\end{align}
+%
+where $S_t$ is the area of the triangle $t$ and the index addition is taken cyclically i.e. modulo $3$. The full matrix $A$ is then constructed as
+%
+\begin{align}
+    A_{i j} = \sum_{t, m, n} A^{t}_{mn},
+\end{align}
+%
+where the sum goes over those combinations of nodes and triangles that can give rise to the global index on the left, i.e. such $t$ and $m$ that give $i$ and such $t$ and $n$ that give $j$.
+
+The case of $B$ is a bit simpler. To it, each triangle contributes
+%
+\begin{align}
+    B^{t}_{mn} = \begin{cases}
+        S_t/6 & m=n\\
+        S_t/12 & m \neq n
+    \end{cases},
+\end{align}
+%
+which we then sum in the same way as before
+%
+\begin{align}
+    B_{i j} = \sum_{t, m, n} B^{t}_{mn}.
+\end{align}
+
+
+The system we got can be solved as a generalized eigenvalue problem, or it can be converted into a normal eigenvalue problem by a Cholesky decomposition of the matrix $B$ since it is positive definite. This gives
+%
+\begin{align}
+    &B = L L^T,& &\tilde{A}=L^{-1} A \left(L^{-1}\right)^T,& &\vec{\tilde{c}} = L^T \vec{c},& \notag\\
+    & & &\Rightarrow \tilde{A} \vec{\tilde{c}} = \lambda \vec{\tilde{c}},& & &
+\end{align}
+%
+where instead of ever calculating inverses we, of course, solve upper and lower triangular systems.
+
+The basis of the Galerkin method is the same as FEM but here the choice of a basis of functions is independent of the mesh on which we're plotting and generally based on symmetry considerations and intuition about the system. This has the advantage of being able to attain enormous precision with even a couple of basis functions, but its drawback is that a choice of basis functions for a generic domain is usually hard to come up with.
+
+The analytical solutions for the semi-circular membrane can also be calculated and are given by Bessel functions as
+%
+\begin{align}
+    u_{mn} &= J_m(\xi_{mn} r) \sin(m \phi),\notag\\
+    \lambda_{mn} &= \xi_{mn}^2,
+\end{align}
+%
+where $\xi_{mn}$ is the $n$-th zero of the $m$-th Bessel function. Furthermore, $m$ is limited to values in $\{ 1, 2, 3, \cdots \}$.
+
+
+\section{Numerical Setup}
+
+To solve the derived matrix eigenvalue problems, both generalized and not, we will use the built-in function \texttt{scipy.linalg.eigh}, which finds the eigenvalues and eigenvectors of symmetric matrices.
+
+Generating triangulations for FEM will again be done with the built-in Delaunay triangulation under \texttt{scipy.spatial.Delaunay}.
+
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{times_nodes_fit_alt.png}
+    \caption{Power law fit for the evaluation times for both versions of the algorithm. In green is the fit of the last $35$ points, which predicts a higher value of the exponent.}
+    \label{fig:times_fit}
+\end{figure}
+
+
+\section{Results}
+
+We begin by testing the speed of the algorithms. We will test both the Cholesky decomposition option and the built-in generalized solver without the decomposition. The results are shown in \cref{fig:times_fit}. The Cholesky decomposition and the built-in method for generalized eigenvalue equations do about as well as each other; there is no perceptible trend between them. The fit in the figure is a power law fit, and it shows that we can't really claim too much precision in calculating the exponent. This is because the graph as a whole and the last $35$ points tell a slightly different story about its value. The genera fit gives a value of $\sim\! 1.4$ while the final few points shown in green converge more towards $\sim\!2$. This is slower than what we had last time for solving a system, but that is to be expected.
+
+
+First we tackle the problem of calculating the eigenvalues for the semicircular membrane using FEM. As alluded to in the problem statement, we will do this using extrapolation of the results for $N_N \rightarrow \infty$.
+
+From last time we know that the error in the values we're calculating doesn't quite decrease exponentially fast. So to extrapolate, we will use a power law dependence for the error.  There is no way to make the power law fit that we want linear, so we will have to do a non-linear fit and take care to not take into account nonsensical results. Specifically, we will use the fit function
+%
+\begin{align}
+    f(x) = \beta_0 + \beta_1 (x + \beta_2)^{-\beta_3},
+\end{align}
+%
+where $\beta_0$ is the value we're aiming for from this fit. For the case of $\beta_3 > 0$, which we're interested in, not including a $\beta_2$ fit coefficient would introduce a fixed singularity at the origin making the whole fit less stable and amplifying errors. Other fit models were tried, but this one worked best.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{eigenvalue_2_extrapolation.png}
+    \caption{Extrapolation fit for the third eigenvalue.}
+    \label{fig:lmd3_fit}
+\end{figure}
+
+\begin{table}[!b]
+    \centering
+    \begin{tabular}{|l|l|l|l|l|l|}
+    \hline
+    $n$ & $\lambda$ & $k$ & $\delta k$ & $\sqrt{\xi}$ & $\Delta k$\\ \hline \hline
+    0 & 14.69   & 3.833  & 0.001 & 3.832  & 0.001 \\ \hline
+    1 & 26.415  & 5.14   & 0.001 & 5.136  & 0.004 \\ \hline
+    2 & 40.696  & 6.379  & 0.002 & 6.38   & 0.001 \\ \hline
+    3 & 49.441  & 7.031  & 0.05  & 7.016  & 0.016 \\ \hline
+    4 & 57.771  & 7.601  & 0.005 & 7.588  & 0.012 \\ \hline
+    5 & 71.011  & 8.427  & 0.014 & 8.417  & 0.01  \\ \hline
+    6 & 76.047  & 8.72   & 0.012 & 8.772  & 0.051 \\ \hline
+    7 & 92.704  & 9.628  & 0.04  & 9.761  & 0.133 \\ \hline
+    8 & 97.749  & 9.887  & 0.022 & 9.936  & 0.049 \\ \hline
+    9 & 102.369 & 10.118 & 0.024 & 10.174 & 0.056 \\ \hline
+    \end{tabular}
+    \caption{First $10$ eigenvalues for the semicircular membrane. $\delta k$ measures the statistical error from extrapolation, while $\Delta k$ measures the difference from the analytical solution. Thus, the method can determine the correct eigenvalues to better than $\sim 1\%$.}
+    \label{tab:semi_extrap}
+\end{table}
+
+The number of nodes we will use vary in the interval $[\sim\! 30, \sim\! 2000]$. An example of this kind of fit is shown in \cref{fig:lmd3_fit}. We see that the calculated eigenvalue is always an overestimate of the real one or in other words $\beta_1>0$. This seems to be the most probable behavior but for some combinations of eigenvalue and mesh the reverse was also seen. Repeating the procedure for other eigenvalues in the first few we generate \cref{tab:semi_extrap}. It shows the first $10$ eigenvalues, their corresponding $k$ and analytically calculated equivalent $\sqrt{\xi}$. $\delta k$ denotes the statistical error of the extrapolation, while $\Delta k$ is a measure of the accuracy, namely the difference between the calculated and analytical values. The relative error associated with the accuracy only goes beyond $1\%$ once and is usually much lower than that.
+
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.48]{profile_14.6861990675972_semicircle_contourf_6516.png}
+    \caption{Profile of the first eigenmode calculated using FEM.}
+    \label{fig:profile_0_fem}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{profile_26.397108933432076_semicircle_contourf_6516.png}
+    \caption{Profile of the second eigenmode calculated using FEM.}
+    \label{fig:profile_1_fem}
+\end{figure}
+
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.45]{profile_49.27184412028313_semicircle_contourf_6516.png}
+    \caption{Profile of the fourth eigenmode calculated using FEM.}
+    \label{fig:profile_2_fem}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.45]{profile_71.01812633002179_semicircle_contourf_6516.png}
+    \caption{Profile of the sixth eigenmode calculated using FEM.}
+    \label{fig:profile_3_fem}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.45]{profile_77.11732395154976_semicircle_contourf_6516.png}
+    \caption{Profile of the seventh eigenmode calculated using FEM.}
+    \label{fig:profile_4_fem}
+\end{figure}
+
+
+Of course, we can also calculate the eigenmodes themselves, a selection of which is shown in \cref{fig:profile_0_fem,fig:profile_1_fem,fig:profile_2_fem,fig:profile_3_fem,fig:profile_4_fem}. Qualitatively, they look like the analytical prediction, but we can say much more by normalizing and comparing. Here we will normalize to the maximum. The difference between the analytical solution and the calculated one is shown in \cref{fig:profile_0_fem_err,fig:profile_1_fem_err} for one lower end solution and one higher end solution. We can see that all around FEM does a good job of calculating the eigenmodes too.
+
+\clearpage
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.45]{profile_26.397108933432076_semicircle_contourf_6516_diff.png}
+    \caption{Difference from analytical for the second eigenmode calculated using FEM.}
+    \label{fig:profile_0_fem_err}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.45]{profile_71.01812633002179_semicircle_contourf_6516_diff.png}
+    \caption{Difference from analytical for the sixth eigenmode calculated using FEM.}
+    \label{fig:profile_1_fem_err}
+\end{figure}
+
+Continuing on with Galerkin, we need to calculate the elements of our matrices. The chosen basis has the nice property that the angular $\sin$ part is orthogonal for different basis functions so that contributes a $\delta_{m m'}$. This eventually means that the matrices will both be block-diagonal with each block representing one value of $m$. The radial part is not orthogonal, so it contributes a non-trivial factor to the matrices. After integration the formulas are
+%
+\begin{align}
+    \delta_{mm'} \frac{\pi}{2} \left\{ \frac{1}{2m+2+n+n'} - \frac{2}{2m+3+n+n'} \right. \notag\\ \left. + \frac{1}{2m+4+n+n'} \right\},
+\end{align}
+%
+for $B_{(mn)(m'n')}$ and
+%
+\begin{align}
+    \delta_{mm'} \frac{\pi}{2} \left\{ \frac{n n'}{2m+n+n'} - \frac{2nn'+n+n'}{2m+1+n+n'} \right. \notag\\ \left. + \frac{(n+1)(n'+1)}{2m+2+n+n'} \right\},
+\end{align}
+%
+for $A_{(mn)(m'n')}$.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.45]{times_log.png}
+    \caption{Evaluation time for the Galerkin method with our particular choice of basis functions.}
+    \label{fig:gal_time_log}
+\end{figure}
+
+With this setup, and the simplification for the angular part, we expect Galerkin to be $\mathcal{O}(MN^3)$, where $M$ is the number of $m$ values, and $N$ is the number of $n$ values. This is exactly what we see in practice as shown in \cref{fig:gal_time_log}, with $M$ constant we get a $\sim\! N^3$ dependence and with $N$ constant we get a $\sim\! M$ dependence asymptotically.
+
+Continuing on to the calculation of the eigenvalues we see the power of this method, \cref{tab:semi_galerkin} shows the calculated and analytical values for the first $10$ eigenvalues calculated with $N=10$ and $M=7$. The deviation from the analytical value is basically imperceptible. Accordingly, the asymptotic time dependence doesn't even play a role because we never care about values of $N$ and $M$ that are large. As the table would suggest, the eigenfunctions are similarly very precise. Here they are not plotted since qualitatively they look the same as the ones calculated with FEM.
+
+\begin{table}[!t]
+    \centering
+    \begin{tabular}{|l|l|l|l|}
+    \hline
+    $n$ & $\lambda$ & $k$ & $\sqrt{\xi}$\\ \hline \hline
+    0 & 14.68197064 & 3.83170597  & 3.83170597 \\ \hline
+    1 & 26.37461643 & 5.135622302 & 5.135622302\\ \hline
+    2 & 40.70646582 & 6.380161896 & 6.380161896\\ \hline
+    3 & 49.21845632 & 7.01558667  & 7.01558667\\ \hline
+    4 & 57.5829409  & 7.588342435 & 7.588342435\\ \hline
+    5 & 70.84999892 & 8.417244141 & 8.41724414\\ \hline
+    6 & 76.93892833 & 8.771483816 & 8.771483816\\ \hline
+    7 & 95.27757281 & 9.761023144 & 9.76102313\\ \hline
+    8 & 98.72627248 & 9.936109524 & 9.936109524\\ \hline
+    9 & 103.4994653 & 10.1734687  & 10.17346814\\ \hline
+    \end{tabular}
+    \caption{First $10$ eigenvalues for the semicircular membrane calculated using the Galerkin guess with $N=10$ and $M=7$. There is basically no perceptible difference between the calculated and analytical values.}
+    \label{tab:semi_galerkin}
+\end{table}
+
+The weakness of Galerkin, as discussed previously, is in the fact that it is very specialized to domains that have some symmetric ansatz to their eigenfunctions. Coming to the domain pictured in \cref{fig:Fsetup} we can't even set up a family of basis functions that would satisfy the boundary conditions easily. The fact that's especially limiting is that one need to come up with a whole family of functions since for asymmetric domains we don't expect to cover even the first few eigenmodes with just a couple of functions.
+
+
+
+This expectation will be confirmed when we calculate the actual eigenmodes of this domain.
+
+\begin{table}[!t]
+    \centering
+    \begin{tabular}{|l|l|l|l|}
+    \hline
+    $n$ & $\lambda$ \\ \hline \hline
+    0 & 106.33704621\\ \hline
+    1 & 150.33599144 \\ \hline
+    2 & 193.40596707 \\ \hline
+    3 & 218.94011083 \\ \hline
+    4 & 221.42076162  \\ \hline
+    5 & 251.33266070 \\ \hline
+    6 & 286.48779241 \\ \hline
+    7 & 317.24667339 \\ \hline
+    8 & 375.01932035 \\ \hline
+    9 & 414.31315590 \\ \hline
+    \end{tabular}
+    \caption{First $10$ eigenvalues for the F-shaped membrane calculated using FEM with $N_N=4232$ points.}
+    \label{tab:FFEM}
+\end{table}
+
+We continue with FEM. Calculating with $N_N=4232$ point we generate \cref{tab:FFEM}. It shows the first $10$ eigenvalues for this domain. It isn't highly enlightening except for the fact that the eigenvalues clearly start higher than for the semicircular membrane for example. This is an indication of the narrowness of the domain. A selection of eigenmodes is shown in \cref{fig:profileF_0_fem,fig:profileF_1_fem,fig:profileF_2_fem,fig:profileF_3_fem,fig:profileF_4_fem,fig:profileF_5_fem,}. The region outside of the domain is just a consequence of the triangulation and does not affect the inside in any way. The eighth mode particularly exhibits some symmetry the domain has, namely that it is built up out of eight $1/4 \times 1/4$ squares.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.45]{profile_106.33704620573758_F_contourf_4232.png}
+    \caption{First eigenmode for F-shaped membrane calculated using FEM.}
+    \label{fig:profileF_0_fem}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.45]{profile_150.33599143601884_F_contourf_4232.png}
+    \caption{Second eigenmode for F-shaped membrane calculated using FEM.}
+    \label{fig:profileF_1_fem}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{profile_218.94011082831034_F_contourf_4232.png}
+    \caption{Fourth eigenmode for F-shaped membrane calculated using FEM.}
+    \label{fig:profileF_2_fem}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{profile_251.33266070329157_F_contourf_4232.png}
+    \caption{Sixth eigenmode for F-shaped membrane calculated using FEM.}
+    \label{fig:profileF_3_fem}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{profile_317.2466733898379_F_contourf_4232.png}
+    \caption{Eighth eigenmode for F-shaped membrane calculated using FEM.}
+    \label{fig:profileF_4_fem}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{profile_414.31315589575667_F_contourf_4232.png}
+    \caption{Tenth eigenmode for F-shaped membrane calculated using FEM.}
+    \label{fig:profileF_5_fem}
+\end{figure}
+
+Seeing the calculated shapes of the modes we partly confirm our expectation that the Galerkin method would need more basis functions because the eigenmodes are localized to parts of the F, and generically we would need more functions to cover this.
+\clearpage
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{sor_fit.png}
+    \caption{Evaluation time for SOR method at optimal parameter $\omega$.}
+    \label{fig:sor_fit}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{FEM_fit.png}
+    \caption{Evaluation time for FEM on the same problem as SOR.}
+    \label{fig:FEM_fit}
+\end{figure}
+
+\section{Comparing the methods}
+
+In regard to FEM and the Galerkin method, the previous sections have taught us the following. If we're solving a problem on some domain with enough symmetry, for which we can make an ansatz for a family of functions that satisfy the boundary conditions, that we're much better off using the Galerkin method. However, generically, when we have a domain for which we can't leverage symmetry for an ansatz, especially for multiple basis functions, then FEM presents a much better choice. In this respect it is the most robust of the methods we've examined. The strengths and weaknesses of these two methods are in a way complementary so that a direct comparison between the two would always be somewhat biased.
+
+
+Along with these we also previously met SOR. It's most easily compared to FEM. The advantage of SOR is its ease of implementation. Regarding its evaluation time we previously found that it was $\sim (N^2)^{1.15}$, which is comparable to FEM's $\sim N_N^{1.07}$, which we found last time, so that in terms of speed they're asymptotically similar. However, FEM is slower in practice by around a factor of $10$ due to the prefactor as can be seen between \cref{fig:sor_fit,fig:FEM_fit}. Where FEM does better, is in its handling of boundaries. Most other methods including SOR have a hard time with boundaries because it's not guaranteed that they'll have a point on the boundary itself to satisfy boundary conditions precisely. We saw this with SOR for the example of an astroid shape, where even after including corrections to take into account the boundary, we still had trouble with computing its Poiseuille coefficient. Even with the birdhouse-shaped region FEM outperformed SOR in the comparison from last time (Poiseuille coefficients: $C_{\mathrm{FEM}} = 0.5892, C_{\mathrm{SOR}} = 0.593.$, with FEM being consistent.).
+
+
+
+\end{document}
