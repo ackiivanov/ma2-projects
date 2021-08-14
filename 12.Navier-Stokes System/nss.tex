@@ -1,0 +1,563 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+\usepackage{tensor}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{nss.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+
+\begin{document}
+
+\title{Navier--Stokes System}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statement}
+
+One of the standard tests for algorithms that try to solve the Navier--Stokes system of equations is the driven cavity. A viscous fluid is placed in a long tube with a square cross-section and the system is driven by dragging one of the sides with a constant velocity (like a conveyor belt). For higher Reynolds' numbers along with the central vortex we observe the creation of other smaller vortices that rotate in the opposite direction. Find the velocity profile and force on the lid of the cavity as a function of the Reynolds number $Re$.
+
+\section{Mathematical Setup}
+
+This problem deals with the Navier--Stokes equation. This is an equation that gives the evolution of a velocity field in some geometry and in dimensionless form it has the following form
+%
+\begin{align}\label{eq:NSE}
+    \partial_t \vec{v} + (\vec{v} \cdot \nabla) \vec{v} = - \nabla p + \frac{1}{Re} \nabla^2 \vec{v},
+\end{align}
+%
+where, the Reynolds number $Re$ is the only parameter of the equation. In terms of dimensionful parameters the Reynolds number is given as
+%
+\begin{align}
+    Re = \frac{\rho \tilde{u} \tilde{L}}{\eta},
+\end{align}
+%
+where $\rho$ is the density, $\eta$ the viscosity, and $\tilde{u}$ and $\tilde{L}$ are some characteristic speed and size for the problem. For the driven cavity these can be taken to be the side length of the cavity and the driving speed of the cavity. The Navier--Stokes equations are in general a non-linear system of equations and this leads to some difficulty in trying to solve them.
+
+One possible way to try to achieve this numerically is through the method of vorticity. In 3D the vorticity is defined as the vector
+%
+\begin{align}
+    \vec{\zeta} = - \nabla \times \vec{v},
+\end{align}
+%
+but in 2D there is only one non-zero component of this vector and the vorticity is interpreted as a scalar. Here we have added an extra minus sign in the definition of vorticity to have less of them later. Taking the curl of \cref{eq:NSE} and denoting the velocity as $\vec{v} = (u, v)$ we get an equation for the evolution of vorticity
+%
+\begin{align}
+    \partial_t \zeta + \partial_x (u \zeta) + \partial_y (v \zeta) - \frac{1}{Re} \left(\partial_x^2 \zeta + \partial_y^2 \zeta\right) = 0.
+\end{align}
+
+Since we're also dealing with an incompressible flow in 2D, we can define the stream function $\psi$ through
+%
+\begin{align}\label{eq:stream}
+    \vec{v} = \nabla \times \vec{\psi},
+\end{align}
+%
+where again $\vec{\psi}$ only its $z$ component as non-trivial and this component is exactly the scalar stream function $\psi$. Using the vector identity
+%
+\begin{align}
+    \nabla \times (\nabla \times \vec{v}) = \nabla(\nabla \cdot \vec{v}) - \nabla^2 \vec{v}
+\end{align}
+%
+we get an equation relating $\zeta$ and $\psi$, namely,
+%
+\begin{align}\label{eq:poisson}
+    \nabla^2 \psi = \zeta,
+\end{align}
+%
+where we have again made use of the incompressibility condition to get rid of the divergence term. We see that luckily this is a Poisson equation and there exist many methods to solve those.
+
+Finally, rewriting \cref{eq:stream} in components
+%
+\begin{align}
+    &u = \partial_y \psi,& &v = - \partial_x \psi&,
+\end{align}
+%
+we get the last two scalar equations that relate back to the velocity.
+
+Having written all the equations, the idea of the vorticity method is to carry out the following procedure:
+%
+\begin{enumerate}
+    \item Solve for the stream function $\psi$ using the vorticity $\zeta$ and the Poisson equation relating them.
+    \item Solve for the components $u$ and $v$ of the velocity by taking derivatives of the stream function.
+    \item Update the vorticity $\zeta$ forward by using the current vorticity and components of the velocity $u$ and $v$.
+\end{enumerate}
+
+Repeating this recursively, we can evolve the system in time, and thus simulate how the fluid will flow.
+
+The numerical scheme of choice to carry this out will be a simple explicit scheme with symmetrized spatial derivatives
+%
+\begin{align}
+    \partial_x f &\approx \frac{f_{i+1,j} - f_{i-1,j}}{2 \Delta x}\notag\\
+    \partial_x^2 f &\approx \frac{f_{i+1,j} - 2 f_{i,j} + f_{i-1,j}}{(\Delta x)^2},
+\end{align}
+%
+and asymmetric time derivative
+%
+\begin{align}
+    \partial_t f \approx \frac{f^{n+1} - f^{n}}{\Delta t},
+\end{align}
+%
+where superscripts are time indices while subscripts are space indices. Since the geometry is symmetric, the grid will also be chosen such that the spacing and number of points in both the $x$ and $y$ directions are the same. To ensure stability a Courant condition is usually enforced in the form of
+%
+\begin{align}
+    \Delta t < 0.4 \frac{\Delta x}{||\vec{v}||_{\mathrm{max}}}.
+\end{align}
+
+The last thing we need to prescribe are the boundary and initial conditions for the problem. The initial condition we'll be interested in is the one where the fluid starts at rest. This means that both components of the velocity are zero everywhere, and consequently the vorticity is also zero everywhere. The stream function is not necessarily zero from this argument, but it does have to be a constant. This in turn means that it can be set to zero since it only ever appears through derivatives.
+
+For the boundary conditions we have that the normal velocity at each wall has to be zero, while the tangential velocity has to be equal to the speed of the wall, i.e. zero for the stationary ones and $1$ for the moving wall. We need to find a way to translate these into conditions for $\psi$ and $\zeta$ too. To ensure that the normal velocity is $0$ we must have the stream function be a constant on the boundary of the box and by the previous argument can be set to zero there
+%
+\begin{align}
+    \psi({\partial\mathcal{D}}) = 0.
+\end{align}
+
+The condition that the tangential velocity be fixed by the wall can be turned into a boundary condition on the vorticity. To see this we will look at the example of the bottom wall. There
+%
+\begin{align}
+    \zeta_{i,0} = \frac{\psi_{i,1} + \psi_{i, -1}}{(\Delta x)^2},
+\end{align}
+%
+since they are related by the Poisson equation \cref{eq:poisson} will the value of the stream function at the boundary itself is zero; this sets three of the terms to $0$. Because of \cref{eq:stream}, we also have the relation 
+%
+\begin{align}
+    \tilde{u} = \frac{\psi_{i,1} - \psi_{i,-1}}{2 \Delta x},
+\end{align}
+%
+and these two together give the boundary condition on the vorticity at the bottom wall as
+%
+\begin{align}
+    \zeta_{i,0} = \frac{2}{(\Delta x)^2} \left( \psi_{i,1} - \tilde{u} \Delta x\right).
+\end{align}
+%
+Similar equations hold for the other walls just by changing the appropriate indices and removing the wall velocity.
+
+Because of the condition on the stream function on the boundary, we have a Poisson equation with Dirichlet-type conditions. The method we will use to solve this is the two-dimensional Fast Fourier Transform, since it is the fastest option for our square domain.
+
+Finally, our system is completely specified and discretized, so that we can continue with solving it.
+
+
+\section{Small \texorpdfstring{$Re$}{Re}}
+
+The first thing we will explore is the low Reynolds number region. This is because in this region the convective non-linear term is negligible compared to the viscous term and the equation becomes approximately linear. This means that the solution will look approximately symmetric under left-right inversion.
+
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.56]{Re0.1_N50_M2000_r0.00025_uv.png}
+    \caption{The velocity field $\vec{v}$ for $Re=0.1$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-4}$.}
+    \label{fig:Re0.1_uv}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.56]{Re0.1_N100_M2000_r0.00025_stream.png}
+    \caption{The stream profile for $Re=0.1$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-4}$.}
+    \label{fig:Re0.1_stream}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.52]{Re0.1_N100_M2000_r0.00025_zeta.png}
+    \caption{The vorticity profile for $Re=0.1$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-4}$.}
+    \label{fig:Re0.1_zeta}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.52]{Re0.1_N100_M2000_r0.00025_psi.png}
+    \caption{The stream function profile for $Re=0.1$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-4}$.}
+    \label{fig:Re0.1_psi}
+\end{figure}
+
+\clearpage
+\newpage
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re0.1_N100_M2000_r0.00025_vmag.png}
+    \caption{The velocity magnitude profile for $Re=0.1$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-4}$.}
+    \label{fig:Re0.1_vmag}
+\end{figure}
+
+\Cref{fig:Re0.1_uv,fig:Re0.1_stream,fig:Re0.1_zeta,fig:Re0.1_psi,fig:Re0.1_vmag} show the stationary state solution for small Reynolds number $Re=0.1$ in different ways. Animations are also provided for the full solution at all times. The numerical characteristics of the solutions are that it was calculated on a $100 \times 100$ grid with
+%
+\begin{align}
+    r = \frac{\Delta t}{\Delta x} = 2.5 \cdot 10^{-4}.
+\end{align} 
+%
+$r$ is chosen as a control parameter instead of the space or time steps themselves to better guarantee convergence of the solution.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re0.1_N100_M2000_r0.00025_zeta_asym.png}
+    \caption{The asymmetry in the vorticity for $Re=0.1$ in the stationary state.}
+    \label{fig:Re0.1_zeta_asym}
+\end{figure}
+
+In the first figure, \cref{fig:Re0.1_uv}, we see the solution represented as a vector field. We see the bottom edge dragging the fluid along and forming the main vortex. This is better seen in the second figure, \cref{fig:Re0.1_stream}, which shows the velocity field as a flow. There the main vortex is clearly visible and furthermore it better showcases the left-right symmetry that is present at such low $Re$. \Cref{fig:Re0.1_zeta} continues by showing the vorticity itself. Remembering that we set the boundary condition for zeta as $\zeta_{i,0} \propto \frac{1}{\Delta x}$, this plot will always show delta function like spikes in the corners of the box. Beyond this we can also see a faint outline of a shape similar to the one in \cref{fig:Re0.1_psi} that has spread towards the middles; this is the diffusion of the vorticity, since the vorticity equation is a diffusion equation. \Cref{fig:Re0.1_psi} shows the stream function $\psi$, where we can see that it indeed satisfies the boundary conditions we prescribed for the problem. Since the stream function is constant along streamlines it is no wonder that \cref{fig:Re0.1_stream} and \cref{fig:Re0.1_psi} look the same. Finally, \cref{fig:Re0.1_vmag} shows the magnitude of the velocity in the final stationary state.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re0.1_N100_M2000_r0.00025_psi_asym.png}
+    \caption{The asymmetry in the stream function for $Re=0.1$ in the stationary state.}
+    \label{fig:Re0.1_psi_asym}
+\end{figure}
+
+\Cref{fig:Re0.1_zeta_asym,fig:Re0.1_psi_asym} show the asymmetries in the vorticity and stream function, respectively. We see that for the vorticity, the asymmetry is of the order of $10^{-2} - 10^{-3}$, while for the stream function it's even lower at around $10^{-5}$. The vorticity has the biggest deviation near the corners again since it is `divergent' there.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re0.1_N100_M2000_r0.00025_forcet.png}
+    \caption{Force $f_x$ on the lid of the cavity as a function of time. The inset shows how the value compares to the final converged value.}
+    \label{fig:Re0.1_forcet}
+\end{figure}
+
+Another thing we're interested in is the horizontal force on the moving lid. This is given by the formula
+%
+\begin{align}
+    f_x(t) = \frac{1}{Re} \int_0^1 \zeta(x,0,t) \dif x,
+\end{align}
+%
+where the integral is, of course, calculated numerically using the trapezoidal method. The results of this are shown in \cref{fig:Re0.1_forcet} as a function of time. The first thing we see is that the force is negative, which is as expected since it is a drag force and the lid is moving in the positive $x$ direction. It starts very large in magnitude at the beginning, and then it starts decreasing. The way it changes with respect to the final value is shown in the inset plot on a log scale.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re0.1_N100_M2000_r0.00025_conv.png}
+    \caption{The relative changes in the vorticity and stream function over time.}
+    \label{fig:Re0.1_conv}
+\end{figure}
+
+The force is one measure of the convergence of the system, but a better, more global measure is given by the integrated relative change in the scalar fields. For a scalar field $Q$, we can calculate the quantity
+%
+\begin{align}
+    \frac{\sum_{ij} |Q_{ij}^{n} - Q_{ij}^{n - 1}|}{\sum_{ij} |Q_{ij}^n|}
+\end{align} 
+%
+as a measure of how much the field has changed in the last time step.
+
+Plotting this file for our two scalar fields $\zeta$ and $\psi$ we get \cref{fig:Re0.1_conv}. It shows that in this regime we have approximately exponential decay of the relative changes towards the stationary state. Furthermore, we also see that the relative changes for the vorticity and stream function give approximately the same order of magnitude numbers for how fast the convergence is. 
+
+\section{Slightly Larger \texorpdfstring{$Re$}{Re}}
+
+Repeating the same procedure for the slightly larger value $Re=10$ we get \cref{fig:Re10_uv,fig:Re10_stream,fig:Re10_zeta,fig:Re10_psi,fig:Re10_vmag}.
+
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.56]{Re10_N50_M3000_r0.025_uv.png}
+    \caption{The velocity field $\vec{v}$ for $Re=10$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-2}$.}
+    \label{fig:Re10_uv}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.56]{Re10_N100_M6000_r0.025_stream.png}
+    \caption{The stream profile for $Re=10$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-2}$.}
+    \label{fig:Re10_stream}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.52]{Re10_N100_M6000_r0.025_zeta_test.png}
+    \caption{The vorticity profile for $Re=10$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-2}$. The boundary layers of cells are all removed to try to better visualize the inside.}
+    \label{fig:Re10_zeta}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.52]{Re10_N100_M6000_r0.025_psi.png}
+    \caption{The stream function profile for $Re=10$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-2}$.}
+    \label{fig:Re10_psi}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.52]{Re10_N100_M6000_r0.025_vmag.png}
+    \caption{The velocity magnitude profile for $Re=10$ in the stationary state. Solution was calculated on a $100 \times 100$ grid with $r=2.5 \cdot 10^{-2}$.}
+    \label{fig:Re10_vmag}
+\end{figure}
+
+\clearpage
+\newpage
+
+They show the equivalent images for the now higher Reynolds number. They look similar to the ones for $Re=0.1$, but there is some difference in the fact that they are less symmetric and are shifted more to the right. 
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{Re10_N100_M6000_r0.025_zeta_asym.png}
+    \caption{The asymmetry in the vorticity for $Re=10$ in the stationary state.}
+    \label{fig:Re10_zeta_asym}
+\end{figure}
+
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{Re10_N100_M6000_r0.025_psi_asym.png}
+    \caption{The asymmetry in the stream function for $Re=10$ in the stationary state.}
+    \label{fig:Re10_psi_asym}
+\end{figure}
+
+This is confirmed by \cref{fig:Re10_zeta_asym,fig:Re10_psi_asym}, which now show much larger numbers when the only thing that's different is the Reynolds number. As with the previous asymmetry graphs, these too, have been simulated on a $100 \times 100$ grid, but now with $r = 2.5 \cdot 10^{-2}$.
+
+Checking the convergence for these values in the same way as before we generate \cref{fig:Re10_conv}. It is not much different from the equivalent picture for $Re=0.1$, and we again see an exponential type behavior.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re10_N100_M6000_r0.025_conv.png}
+    \caption{The relative changes in the vorticity and stream function over time. $r=2.5 \cdot 10^{-2}$.}
+    \label{fig:Re10_conv}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re10_N50_M3000_r0.00025_conv_osc.png}
+    \caption{The relative changes in the vorticity and stream function over time. $r=2.5 \cdot 10^{-4}$.}
+    \label{fig:Re10_conv_osc}
+\end{figure}
+
+What is interesting, though, is what happens if we make the time step smaller and smaller. As we do this we get a peek into an unwanted behavior of the method we're using to solve the Navier--Stokes equation. The solution gains a somewhat damped oscillatory behavior that dies out after a while. This is shown through the relative changes in the vorticity and stream function in \cref{fig:Re10_conv_osc}. This behavior is not limited to those; it affects all quantities we have as can be seen in the animation of this case. Due to the difficulty of animating every single time step, though, this effect will mostly not be seen in further animations since it doesn't last that long, at least for moderately sized $Re$.
+
+The effect has been mentioned in the literature and happens because of the non-linear term of the NS equation; the damping of the oscillations is smaller for larger $Re$ and thus more visible in that regime. \cite{weakcite_osc}
+
+Returning to the case without the oscillations we also calculate the force as before --- \cref{fig:Re10_forcet} --- and again get that it is qualitatively similar to the case of $Re=0.1$. The magnitude of the force, on the other hand, is much different. This is to be expected since the force has a factor of $1/Re$ in its expression, so we can expect the force to decrease. However, since $\zeta$ also depends on $Re$ we can't a priori say by how much. Now we see that in this regime the $1/Re$ factor dominates, and the force is almost exactly $100$ times smaller.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{Re10_N100_M6000_r0.025_forcet.png}
+    \caption{Force $f_x$ on the lid of the cavity as a function of time. The inset shows how the value compares to the final converged value.}
+    \label{fig:Re10_forcet}
+\end{figure}
+
+\section{Further Increasing \texorpdfstring{$Re$}{Re}}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re100_N50_M3000_r0.25_stream.png}
+    \caption{The stream profile for $Re=100$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$.}
+    \label{fig:Re100_stream}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re500_N50_M6000_r0.25_stream.png}
+    \caption{The stream profile for $Re=500$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$.}
+    \label{fig:Re500_stream}
+\end{figure}
+
+Continuing to increase $Re$ we expect to see the formation of new vortices beyond the main one, which is exactly what we observe in the simulation. The progression from $Re=100$, where we get the first glimpse of a new vortex, up to $Re=3000$, where two vortices are already established in both upper corners, is shown through the flow profiles in \cref{fig:Re100_stream,fig:Re500_stream,fig:Re1000_stream,fig:Re3000_stream}. There we see how the flow becomes more and more slanted to the right from the symmetrical configuration of the small $Re$ case. The first vortex then appears in the upper right corner of the box. The circulation of this vortex has to be in the opposite direction to the main one, which is shown in \cref{fig:Re100_stream}.
+
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re1000_N50_M6000_r0.25_stream.png}
+    \caption{The stream profile for $Re=1000$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$.}
+    \label{fig:Re1000_stream}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re3000_N50_M8000_r0.25_stream.png}
+    \caption{The stream profile for $Re=3000$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$.}
+    \label{fig:Re3000_stream}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.56]{Re5000_N50_M12000_r0.25_stream.png}
+    \caption{The stream profile for $Re=5000$ after $T=60$; steady state was not reached. Solution was calculated on a $50 \times 50$ grid with $r=0.25$.}
+    \label{fig:Re5000_stream}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re100_N50_M3000_r0.25_zeta_test.png}
+    \caption{The vorticity profile for $Re=100$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re100_zeta}
+\end{figure}
+
+
+Continuing to $Re=500$ the vortex grows and fills more of its corner, and after that at $Re=1000$ we see the appearance of a second secondary vortex in the upper left corner. This one also gets larger as we increase the Reynolds number. The kink in the lower left corner also gets more pronounced and this is where we expect to see another vortex. \Cref{fig:Re5000_stream} hits that this suspicion is correct, but in that case a steady state wasn't reached after $T=60$, so it should not be taken as too convincing.
+
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re500_N50_M6000_r0.25_zeta_test.png}
+    \caption{The vorticity profile for $Re=500$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re500_zeta}
+\end{figure}
+
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re1000_N50_M6000_r0.25_zeta_test.png}
+    \caption{The vorticity profile for $Re=1000$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re1000_zeta}
+\end{figure}
+
+The same story but with the vorticity is shown in \cref{fig:Re100_zeta,fig:Re500_zeta,fig:Re1000_zeta}. There we see the appearance of the blue streak of positive vorticity. This curve across which the vorticity drastically changes is what eventually becomes the boundary of the region with the primary vortex and the region with the secondary vortices.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.56]{Re3000_N50_M8000_r0.25_zeta_test.png}
+    \caption{The stream profile for $Re=3000$ in the stationary state. Solution was calculated on a $50 \times 50$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re3000_zeta}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re3000_N80_M11000_r0.25_zeta_test.png}
+    \caption{The stream profile for $Re=3000$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re3000_N80_zeta}
+\end{figure}
+
+\Cref{fig:Re3000_zeta}, though, reveals a point of uneasiness. It shows that the lower right corner develops some kind of instability, where the vorticity oscillates wildly across neighboring cells in a checkerboard-like pattern. This seems to be problem with the numerical solution since it involves the underlying grid that we set up. Doing the same calculation but now with an $80 \times 80$ grid seems to make the size of the affected region smaller, but it doesn't noticeably decrease the magnitude of the defect. This is shown in \cref{fig:Re3000_N80_zeta}. Either way, we can probably conclude that it's a problem that arises due to the grid not being large enough.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.56]{Re3000_N80_M11000_r0.25_uv_1100.png}
+    \caption{The velocity vector field for $Re=3000$ when the vortex is traveling along the wall. Solution was calculated on a $80 \times 80$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re3000_uv_alongwall}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.56]{Re3000_N80_M4300_r0.25_uv_4300.png}
+    \caption{The velocity vector field for $Re=3000$ when the vortex is spreading. Solution was calculated on a $80 \times 80$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re3000_uv_spreading}
+\end{figure}
+
+At these high Reynolds numbers the main vortex noticeably manifests in a small region around the lower right corner of the cavity and subsequently travels along the right wall upwards. At some point it splits of from the wall, and its center starts traveling vaguely towards the middle of the cavity, all while the vortex is getting bigger. Such behavior is typical for vortices. The vorticity diffuses away, a property controlled by how large the kinematic viscosity is.
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{Re3000_N80_M7300_r0.25_uv_7300.png}
+    \caption{The velocity vector field for $Re=3000$ when the vortex is almost at the center. Solution was calculated on a $80 \times 80$ grid with $r=0.25$. Boundary layer of cells has not been plotted.}
+    \label{fig:Re3000_uv_spread}
+\end{figure}
+
+This sequence of events is depicted in \cref{fig:Re3000_uv_alongwall,fig:Re3000_uv_spreading,fig:Re3000_uv_spread}, however a much clearer picture of the process is achieved with the animation. Another behavior observed for $Re=5000$ is that the center of the vortex starts to rotate in the direction of the vortex once the vortex has `filled out' the cavity. An animation of this is also provided.
+
+
+\section{Computational Cost}
+
+From a numerical standpoint, simulating higher and higher Reynolds numbers quickly becomes intractable. This is because higher Reynolds numbers mean smaller viscosity and the solution takes more time to equilibrate. This means that we have to simulate more and more steps before we reach a stationary state.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{stimes.png}
+    \caption{The time $T$ necessary to converge to the stationary state, where convergence is determined as the point when the relative difference in $\zeta$ becomes smaller than $\epsilon=10^{-4}$.}
+    \label{fig:stimes}
+\end{figure}
+
+\Cref{fig:stimes} shows the time (in simulation as opposed to computational time) necessary to converge to the stationary state as a function of the Reynolds number. The solution is deemed to have converged when the relative change in the scalar field $\zeta$, as defined above, becomes less than $\epsilon=10^{-4}$. We see that for small times it is linear in the Reynolds number while for higher $Re$ it slightly tapers off. Either way higher $Re$ takes more time to simulate. This fact is doubly bad because we also have a limit from the convergence which says that the time steps can't be too large or more precisely,
+%
+\begin{align}
+    \Delta t < r_{0} \Delta x.
+\end{align}
+%
+Choosing the maximal possible time step, this means that the number of time points $M$ has to scale with the number of space points $N$. 
+
+The computation of the finite difference scheme takes $\mathcal{O}(N^2 M)$, with our implementation, which we now know means that the time complexity to reach a stationary state scales as $\mathcal{O}(N^3)$. This quickly becomes intractable for higher $Re$.
+
+\section{Force on the Lid}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{forceRe1.png}
+    \caption{Horizontal force $f_x$ on the cavity lid as a function of the Reynolds number $Re$ in the stationary state.}
+    \label{fig:forceRe}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{ReforceRe1.png}
+    \caption{Horizontal force times the Reynolds number $Re \, f_x$ as a function of the Reynolds number $Re$ in the stationary state.}
+    \label{fig:ReforceRe}
+\end{figure}
+
+Previously we looked at how the force on the lid evolves in time for a given Reynolds number. We also saw in passing that for small $Re$ the force scales as $1/Re$, i.e. the effect of the vorticity $\zeta$ dependence on $Re$ was negligible. Here we will explore that further by looking at the $Re$ dependence on the force after the system has reached its stationary state.
+
+In \cref{fig:forceRe} we plot how the absolute value of the calculated force $|f_x|$ depends on the Reynolds number $Re$, and we see that what we had previously with $Re=0.1$ and $Re=10$ neatly fits in the $1/Re$ regime --- which looks linear in the log-log scale --- but after about $Re=100$ we transition away from this regime and the force tapers off.
+
+\Cref{fig:ReforceRe} plots the product $Re \, f_x$ as a function of $Re$, and it shows that in the $1/Re$ dominated regime, $\zeta$ isn't quite constant, but rather it has some non-dominant dependence on $Re$. In the high $Re$ regime this dependence becomes a large growth, and it affects the force as seen in the previous figure.
+
+A simulation to higher Reynolds numbers would be necessary to conclude whether the $\zeta$ dependence ever becomes dominant. If the behavior of \cref{fig:ReforceRe} continues then this would mean that the force starts growing again after some Reynolds number.
+
+
+\section{Second Moving Lid}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{modRe0.1_N80_M1000_r0.0001_stream.png}
+    \caption{The stream profile for $Re=0.1$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.0001$.}
+    \label{fig:modRe0.1_stream}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.56]{modRe10_N80_M3000_r0.01_stream.png}
+    \caption{The stream profile for $Re=10$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.01$.}
+    \label{fig:modRe10_stream}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{modRe100_N80_M7000_r0.25_stream.png}
+    \caption{The stream profile for $Re=100$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.25$.}
+    \label{fig:modRe100_stream}
+\end{figure}
+
+Let's also look at how the behavior changes if we add a second moving lid opposite the first one. Similarly to the procedure we did for the normal setup, we approximately logarithmically scan the range of Reynolds number from $0.1$ to $3000$ and plot the flow profiles of the fluid in the box once it has reached a stationary state. This gives rise to \cref{fig:modRe0.1_stream,fig:modRe10_stream,fig:modRe100_stream,fig:modRe1000_stream,fig:modRe3000_stream}.
+
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{modRe1000_N80_M10000_r0.25_stream.png}
+    \caption{The stream profile for $Re=1000$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.25$.}
+    \label{fig:modRe1000_stream}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.56]{modRe3000_N80_M11000_r0.25_stream.png}
+    \caption{The stream profile for $Re=3000$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.25$.}
+    \label{fig:modRe3000_stream}
+\end{figure}
+
+In the low Reynolds number regime the vortices don't interact much and a stationary state with two vortices is possible. As we increase the Reynolds number these vortices become narrower until they eventually merge into one vortex as in \cref{fig:modRe100_stream}. For higher values of the Reynolds number we start regaining some symmetry in the solution. Secondary vortices only start forming around $Re=3000$ much later than they did for the single driven lid.
+
+Finally, we also plot the vorticity in \cref{fig:modRe1000_zeta} and again see the appearance of the boundary where the vorticity changes suddenly, except that now each side has its own.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.52]{modRe1000_N80_M10000_r0.25_zeta_test.png}
+    \caption{The vorticity profile for $Re=1000$ in the stationary state. Solution was calculated on a $80 \times 80$ grid with $r=0.25$. The boundary layers of cells are all removed to try to better visualize the inside.}
+    \label{fig:modRe1000_zeta}
+\end{figure}
+
+\printbibliography
+
+\end{document}
