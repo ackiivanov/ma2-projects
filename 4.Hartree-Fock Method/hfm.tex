@@ -1,0 +1,250 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{hfm.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+\newcommand{\diff}{\mathop{}\!\mathrm{d}}
+
+\begin{document}
+
+\title{Hartree-Fock Method}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+\subsubsection*{Problem 1}
+
+Find the ionization energy eigenvalue and eigenfunction for a helium atom in the Hartree-Fock approximation \cite{hartree}. We look for wavefunctions with the ansatz
+%
+\begin{align}
+    \Psi(\vec{r}_1, \vec{r}_2) &= \frac{1}{\sqrt{2}} \phi_{1s}(\vec{r}_1) \phi_{1s}(\vec{r}_2) \left( \ket{\uparrow_1 \downarrow_2} - \ket{\downarrow_1 \uparrow_2} \right),\notag\\
+    \phi_{1s} &= \frac{1}{\sqrt{4 \pi}} \frac{R(r)}{r}.
+\end{align}
+
+\subsubsection*{Problem 2}
+
+Calculate the ionization energy of the $\mathrm{Li}^+$ atom and check whether the $\mathrm{H}^-$ atom is bound in the Hartree-Fock approximation. Estimate what is the critical $Z$ after which there are no bound states in this approximation.
+
+
+\section{Mathematical Setup}
+
+Going forward with the given ansatz, we can nondimensionalize and setup up a minimization problem with the energy as follows
+%
+\begin{align}\label{eq:action}
+    E &= 2 \int_0^{\infty} \left[ R'^2 - \frac{2 Z}{x}R^2 - \Phi(x)R^2\right] \dif x\notag\\
+    &- 2 \varepsilon \left( \int_0^{\infty} R^2 \dif x - 1 \right),
+\end{align}
+%
+where the first two terms are the standard energy for an electron in the potential of the nucleus, the third term describes the electron-electron interaction and the final term is introduced with the Lagrange multiplier $\varepsilon$ to keep the wavefunction normalized. In this form the energy is measured in units of $E_0 = 13.6058 \, \mathrm{eV}$.
+
+The so-defined $\Phi(x)$ is a potential due to one of the electrons' charge density, so we can calculate it from the Poisson equation
+%
+\begin{align}
+    \nabla^2 \Phi(x) = \frac{R^2}{x^2},
+\end{align}
+%
+which can in this case be analytically solved with the integral expression
+%
+\begin{align}
+    \Phi(x) = -\frac{1}{x} \int_0^x R^2(y) \dif y - \int_x^{\infty} \frac{R^2(y)}{y} \dif y.
+\end{align}
+
+To get an equation for $R$ we will vary the energy using the Euler-Lagrange equations. We have to be careful however, because \emph{we shouldn't vary the total energy} given by \cref{eq:action}, but rather the individual energy of each electron. This is a different quantity because the sum of the two energies of the individual electrons double counts the interaction potential. So the quantity that we vary is
+%
+\begin{align}
+    E_1 &= \int_0^{\infty} \left[ R'^2 - \frac{2 Z}{x}R^2 - 2 \Phi(x)R^2\right] \dif x\notag\\
+    &-  \varepsilon \left( \int_0^{\infty} R^2 \dif x - 1 \right),
+\end{align}
+%
+where all quantities are as defined before and the only difference (except for an overall factor of $2$) from the total energy is the important factor of $2$ in front of the $\Phi$ term.
+
+Varying this quantity gives us back the normalization when we vary with respect to $\varepsilon$ and the following differential equation when we vary with respect to $R$
+%
+\begin{align}\label{eq:eigs}
+    \frac{\mathrm{d}^2 R}{\dif x^2} + \left( \frac{2 Z}{x} + 2 \Phi(x) + \varepsilon \right) R = 0.
+\end{align}
+
+We notice that this is just an eigenvalue equation for $R$ with eigenvalue $\varepsilon$ and as such we can solve it with the methods we have previously developed. However, because of the appearance of $\Phi$, which requires $R$ to calculate, we can't just do it directly, rather, we have to do it iteratively. Namely, we choose an initial guess for $R$, calculate $\Phi$ from there and then solve the eigenvalue equation \cref{eq:eigs} to get $R$ and $\varepsilon$. We then iterate this process until $\varepsilon$ converges to our desired accuracy.
+
+
+At the end we need to calculate the energy for our particular solution through \cref{eq:action}. This process can be simplified by integrating by parts and plugging in the expression for the second derivative à la \cref{eq:eigs} analytically. This process gives
+%
+\begin{align}
+    E = 2 \varepsilon + 2 \int_0^{\infty} \Phi(x)R^2(x) dx,
+\end{align}
+%
+which is expected since $\varepsilon$ plays the role of a single particle energy and $\Phi$, which is negative, plays the role of the electron-electron interaction.
+
+To start the iteration process we need an initial guess for the wavefunction $R(x)$. To get this we use our knowledge of the ground state wavefunction for the hydrogen atom and modify it with an effective atomic number $Z^* = Z - 5/16$
+%
+\begin{align}\label{eq:initial}
+    R^{(0)}(x) = 2 \left( Z^* \right)^{3/2} x \exp(- Z^* x),
+\end{align}
+%
+where we can think of the $5/16$ drop in atomic number as the electron screening the nucleus' charge.
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{sol2.png}
+    \caption{The solution for the ground state radial eigenfunction $R$ of helium as given by the Hartree-Fock method. The energy is within $1\,\mathrm{eV}$ of the actual measured value.}
+    \label{fig:sol2}
+\end{figure}
+
+After we solve the eigenvalue equation for the ground state energy, the ionization energy of the atom is just given by the same value but positive.
+
+\section{Numerical Methods}
+
+The numerical method of choice to solve differential equations like \cref{eq:eigs} will for us be Numerov's method. This is because our equation doesn't have a first derivative and Numerov's method for linear systems is implicit. But most importantly, this method doesn't need any evaluations in between the predetermined mesh of $x$ values (it doesn't use partial steps) and, at the same time, is of high enough order. This makes it perfect for our use since our differential equation has that pesky $\Phi$ in it which we only determine by integrating on our mesh. If we were to use an integration algorithm that uses partial steps, then we would have to interpolate the $\Phi$ function at the points in between the mesh, and we would have to be careful enough to not introduce too much error while doing this. Using Numerov's method we will just be storing $\Phi$ as a list of numbers at the predetermined mesh points.
+
+Another fact to consider is that there are two Euler-Lagrange equations: \cref{eq:eigs} and the normalization condition. This effectively means that we have to normalize $R$ at every iteration before we plug it back in. This fact makes the choice of integrator very important; we need to choose an integrator with a comparable order to the differential equation integrator. Here we will be using the Simpson integration method.
+
+The searching for zeros to implement the shooting method will be done with bisection. The only technical detail that arises here is that we can't choose the bisection interval to be too small even if we know that the actual solution is on the given interval because the solution given by each iteration of the Hartree-Fock method can happen to lie outside of this interval and the process would not be able to find it and continue with the next iteration.
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{sol_phi2.png}
+    \caption{The solution for the interaction potential $\Phi$ of helium as given by the Hartree-Fock method.}
+    \label{fig:sol_phi2}
+\end{figure}
+
+\section{Results}
+
+To solve our first problem, putting to work the Hartree-Fock method, we obtain \cref{fig:sol2,fig:sol_phi2}. The first of these gives the solution for the ground state radial wavefunction of helium ($Z=2$) as compared to the initial guess of \cref{eq:initial} that we gave the method. We see that our initial guess was not that far off which just says that the variational method for solving helium gives a similar result to the Hartree-Fock method in terms of wavefunctions. Also shown is the energy associated to the solution as well as the actual energy measured in helium. The difference between these two is only around $1\,\mathrm{eV}$, an error of $\sim\! 1.3\%$.
+
+\Cref{fig:sol_phi2}, on the other hand, shows the interaction potential $\Phi$ that we get after simultaneously solving the equations. Far away it behaves as a $-1/x$ potential, which is consistent with Coulomb repulsion according to the sign convention we choose when defining $\Phi$ above. Closer to the origin the potential is less and less like $-1/x$ and becomes a finite well.
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.5]{phi_Rp.png}
+    \caption{Change in the interaction potential $\Phi$ as we change the initial slope of the wavefunction $\dot{R}(0)$ relative to the potential calculated with the initial slope $\dot{R}(0) = 1$.}
+    \label{fig:phi_Rp}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.5]{ergerr_xmax_alt2.png}
+    \caption{Change in the energy eigenvalue as we change the maximal distance $x_{\mathrm{max}}$ relative to the energy calculated with the largest $x_{\mathrm{max}}$. The number of points has been fixed to $N = 3000$. Tolerance on the endpoint is shown in black.}
+    \label{fig:xmax_ergerr}
+\end{figure}
+
+In the case of multi-electron atoms we don't have an analytical solution to compare against, but we can still check the behavior as we change different technical parameters.
+
+
+Under different initial slopes $\dot{R}(0)$ the wavefunction behaves similarly to last week's problem (see CITE SELF). The new thing this time around is the effect on $\Phi$. \Cref{fig:phi_Rp} shows this behavior, which has a similar shape to the behavior of the wavefunction with the only difference being that $\Phi$ is a smaller deviation. From here on we will be using $\dot{R}(0) = 10$.
+
+Another thing we can check is how the energy eigenvalue depends on $x_{\mathrm{max}}$, the point we say is infinity. This is shown in \cref{fig:xmax_ergerr}, where we see that larger values of $x_{\mathrm{max}}$ generally give better values of the energy. Another thing to notice is that smaller values of $Z$ require higher values of $x_{\mathrm{max}}$, which is expected because those solutions have smaller exponential suppression as can be seen in the initial guess \cref{eq:initial}, which is a good approximation as we have seen. An interesting feature of these curves is that they have a dip in them, where the energy becomes more accurate than one would expect based on neighboring values of $x_{\mathrm{max}}$. This dip is due to the fact that for small $x_{\mathrm{max}}$ it is not a good approximation for $\infty$, while for large $x_{\mathrm{max}}$ the exponentially growing solution becomes harder to control. Somewhere in the middle there is an $x_{\mathrm{max}}$ where neither of these is too problematic, and we get a dip. After the dip, the previously observed trend that small $Z$ require larger $x_{\mathrm{max}}$ reverses for the same reasons as before. Namely, the exponential, which was previously slowly decaying is now slowly diverging; this makes it easier to control. The range of $x_{\mathrm{max}}$, which has been checked isn't large enough to see the dip in the blue curve, which is why the described reversal hasn't happened for it yet.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{ergs_Z.png}
+    \caption{Energy eigenvalue of the ground state in eV as a function of atomic number $Z$.}
+    \label{fig:ergs_Z}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{sol3.png}
+    \caption{Energy eigenfunction of the ground state for $\mathrm{Li}^+$.}
+    \label{fig:sol3}
+\end{figure}
+
+Continuing on for higher $Z>=2$ we generate \cref{fig:ergs_Z}. It shows the energy eigenvalue for the ground state in eV as a function of the atomic number $Z$. From it, we can read of the particular case that interests us for $\mathrm{Li}^+$ ($Z=3$) as $E = -196.91\,\mathrm{eV}$. The wavefunction associated to this eigenvalue is additionally plotted in \cref{fig:sol3}. The actual value of the energy is also shown in this figure, and it is given by $E_{\mathrm{real}} = -198.04\,\mathrm{eV}$, making our result off by $\sim\! 0.57\%$.
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.5]{convergence.png}
+    \caption{Convergence of the Hartree-Fock method for $Z=2$ as illustrated by the deviations of the wavefunction, potential and energy from their final values. Tolerance at the endpoint is shown in black.}
+    \label{fig:conv1}
+\end{figure}
+
+
+We're also interested in how the Hartree-Fock algorithm converges. To investigate this we plot the deviations of the radial wavefunction, the interaction potential and the energy from their eventual final value after convergence as functions of the iteration number. For $Z = 2$ this produces \cref{fig:conv1}, and we see that we exponentially converge to an answer.
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[scale=0.5]{convergence1.07.png}
+    \caption{Convergence of the Hartree-Fock method for $Z=1.07$ as illustrated by the deviations of the wavefunction, potential and energy from their final values. Tolerance at the endpoint is shown in black.}
+    \label{fig:conv2}
+\end{figure}
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[scale=0.5]{convergence1.058.png}
+    \caption{Convergence of the Hartree-Fock method for $Z=1.058$ as illustrated by the deviations of the wavefunction, potential and energy from their final values. We see that the method may converge at some point but very slowly. Tolerance at the endpoint is shown in black.}
+    \label{fig:conv3}
+\end{figure}
+
+But as we lower the value of $Z$, we get figures more like \cref{fig:conv2}, which shows the result for $Z=1.07$. Our quantities don't converge uniformly like before, but rather they oscillate between two values. Small hints of this behavior can also be seen in \cref{fig:conv1} for $Z=2$, but there they are too small to matter. Continuing in this way we can only go down to about $Z=1.059$ before the method starts to not converge in reasonable amounts of time. \Cref{fig:conv3} shows that it's probably theoretically possible to go to even smaller values, but the convergence becomes very slow. This means that the Hartree-Fock method doesn't answer the question of whether $\mathrm{H}^-$ is bound. However, we can try to get an approximation of the energy by calculating with values close to $Z=1$; with $Z = 1.059$ we get an energy of $E=-15.57\,\mathrm{eV}$, while the real energy is $E_{\mathrm{real}}=-14.34\,\mathrm{eV}$. This is an error of $\sim\! 8.6\%$, which is worse than before but still not that bad.
+
+This is related to the fact that when we have these oscillations between two values, convergence is determined by the higher of the two because after each iteration we're checking to see if the solutions differ by anything more than a given tolerance. Only when both the lower and upper branch are below that tolerance do we have a solution. This suggests a possible way of calculating solutions even when the algorithm doesn't actually converge. Namely, we can choose the branch that converges to a value faster, and then we look at every second solution, a process that keeps us on the aforementioned branch.
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{sol1.03_half.png}
+    \caption{Solution obtained from the modified Hartree-Fock method. The major limitation is the size of $x_{\mathrm{max}}$. This is obviously not a solution of the equation.}
+    \label{fig:sol_1.03}
+\end{figure}
+
+By implementing this we can go even further back than the previous limit of $\sim\! 1.059$, but at that point we get that the solution falls off slower than the expected exponential and the limiting factor becomes the size of $x_{\mathrm{max}}$. This situation is shown in \cref{fig:sol_1.03} for $Z = 1.03$. This is a bigger problem than it initially seems because the branch splitting happens more and more the larger $x_{\mathrm{max}}$ is, since the exponential can cause larger and larger divergences especially for solutions on the upper branch which miss the eigenvalue by more. Eventually this means that the splitting is too large even at the starting $3$ points to be able to make a decision for the interval of bisection.
+
+\begin{figure}
+    \centering
+    \includegraphics[scale=0.5]{sol3_second.png}
+    \caption{Solution for $Z = 3$ with a higher number of nodes, namely $1$.}
+    \label{fig:sol3_second}
+\end{figure}
+
+In any case this modified algorithm is much faster than the original in the region that has substantial splitting because it has a much less strict stopping condition.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{sol4_second_t.png}
+    \caption{Solution for $Z = 2$ with a higher number of nodes, namely $1$ along with the convergence evolution of the solution.}
+    \label{fig:sol4_second}
+\end{figure}
+
+With our assumptions made in the setup of the problem we assumed that the individual electron wavefunction are the same and that then individual wavefunctions are of the type $l=0$. But we didn't make an assumption on their individual principal quantum number $n$; this only came in the shape of the initial guess. It should be noted that these quantities have not really been defined for multi-electron atoms but here we're using them by analogy with hydrogen since we're starting with spatially decoupled states. 
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.5]{sol_phi4_second.png}
+    \caption{Solution the interaction potential $\Phi$ for $Z = 2$ with a higher number of nodes, namely $1$.}
+    \label{fig:phisol4_second}
+\end{figure}
+
+This means that we can try bisection at a lower (by absolute value) energy than the calculated ionization energy and get a bound state with a larger number of nodes. \Cref{fig:sol3_second,fig:sol4_second} show two examples of such solutions. The first is a solution for $Z=3$ with one node instead of zero, while the second is again a solution with one node but now for $Z=4$. It's interesting to note that these solutions were obtained by using the initial guess with $0$ nodes so that the final solution is quite different from the initial one. With \cref{fig:sol4_second} we can also see that even on the first iteration the solution changes dramatically, if the energy eigenvalue requires it to. This means that the Hartree-Fock method is not that sensitive to the initial guess, of course within reason. A better initial approximation for these solutions with multiple nodes would probably make the convergence faster and with fewer jumps between iterations. \Cref{fig:phisol4_second} also shows the interaction potential in the case of more nodes, which we can see is still Coulomb-like but the shape is more complicated than previously seen.
+
+
+
+\printbibliography
+
+\end{document}
