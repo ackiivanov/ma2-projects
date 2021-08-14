@@ -1,0 +1,626 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+\usepackage{tensor}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{koe.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+
+\begin{document}
+
+\title{Ensemble of Kuramoto Oscillators}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statement}
+
+Explore the motion of an ensemble of $N$ (at least $100$) Kuramoto oscillators that have a Lorentzian or Gaussian distribution of natural frequencies by solving the system
+%
+\begin{align}\label{eq:kuramoto}
+    \theta_i = \omega_i + \frac{K}{N} \sum_{j=1}^N \sin(\theta_j - \theta_i),
+\end{align}
+%
+where the physical interpretation of $\theta_i$ is as the phase of the $i$-th oscillator, $\omega_i$ is the natural frequency of the $i$-th oscillator and $K$ is a coupling constant. Consider how the continuous distribution of frequencies should be mapped onto a discrete set of values. At the initial moment, the phases should be uniformly distributed on the interval $[0, 2 \pi)$. With the solution $\theta_i$ compute the complex order parameter and observe its behavior.
+
+\section{Analytical analysis}
+
+The first thing to notice is that the value of the coupling constant isn't really a parameter of the system since we can choose to nondimensionalize time with the replacements $Kt \mapsto t$ and $\omega/K \mapsto \omega$. The only part of the coupling constant that matters is its sign. We will first consider positive coupling constants and then extend some of our results to negative coupling constants by suitable replacements.
+
+The first step to understanding the ensemble is through linear analysis. For this system the linear analysis is valid when the differences between angles are small or, said generally, when
+%
+\begin{align}
+    \Delta \theta = \max_i\{\theta_i\} - \min_i\{\theta_i\} \ll 1 \quad \quad \forall t.
+\end{align}
+In that case we can get rid of the sine, and we can write the resulting linear equation in vector form as
+%
+\begin{align}
+    \dot{\theta} = \omega - \theta + \braket{\theta},
+\end{align}
+%
+where $\theta, \omega \in \mathbb{R}^N$ and where we have defined the average value as the operator
+%
+\begin{align}
+    \braket{\cdot}&: \mathbb{R}^n \rightarrow \mathbb{R}^n \notag\\
+    \forall i&: \braket{\theta}_i = \frac{1}{N} \sum_{j=1}^N \theta_j,
+\end{align}
+%
+whose output's components are all the average of the components of the input vector.
+
+This equation can be written as a matrix system of differential equations if we introduce the matrix $J \in \mathbb{R}^{N \times N}$, whose elements are
+%
+\begin{align}
+    J_{ij} = 1 \quad \quad \forall i,j \ ,
+\end{align}
+%
+because
+%
+\begin{align}
+    \braket{\theta} = \frac{1}{N} \ J \theta.
+\end{align}
+
+In this form the system is the first order linear inhomogeneous vector differential equation
+%
+\begin{align}\label{eq:lin_mat}
+    \dot{\theta} + \left(I - \frac{1}{N} J\right) \theta = \omega,
+\end{align}
+%
+which has the fundamental matrix
+%
+\begin{align}
+    \Phi(t) = \exp \left\lbrace-t \left(I - \frac{1}{N} J\right) \right\rbrace,
+\end{align}
+%
+and consequently, the general solution \cite{nonhom}
+%
+\begin{align}
+    \theta(t) = \Phi(t) \theta_0 + \Phi(t) \int \Phi(t)^{-1} \omega \dif t,
+\end{align}
+%
+where $\theta_0$ is some vector of undetermined constants that will be fixed by the initial conditions.
+
+The stability of the system depends on the eigenvalues of the matrix appearing in \cref{eq:lin_mat}, namely the system is stable if the eigenvalues of $J/N - I$ are all negative. In our particular case, it can be seen that $N-1$ of the eigenvalues are $-1$, while $1$ of them is $0$. The marginal case of the $0$ eigenvalue is a bit troublesome and to deal with it, we will compute the general solution.
+
+The fundamental matrix can directly be computed since the matrix in the exponent is actually a projector onto the subspace with $0$ average value vectors, thus allowing the series of the exponential to be re-summed for $\exp(t)$ only. In the end this gives us the simplification
+%
+\begin{align}
+    \exp \left\lbrace-t \left(I - \frac{1}{N} J\right) \right\rbrace = \frac{1}{N} J + \left(I - \frac{1}{N} J\right) e^{-t},
+\end{align}
+and its inverse is, of course, the same but with $t \mapsto -t$.
+
+With this, the general solution becomes
+%
+\begin{align}\label{eq:linsol}
+    \theta = \braket{\theta_0} + e^{-t} \left(\theta_0 - \braket{\theta_0}\right) + \omega + \braket{\omega} \left(t - 1\right).
+\end{align}
+
+Inspecting the differential equation, we see that any global change  in all oscillators is irrelevant because it can be done away with by a coordinate transformation; only relative changes are important. In particular, we can always get rid of some part of the angular velocity by going into a frame that rotates with it. From the solution we see that it is desirable to get rid of the average angular velocity. In a similar vein, without loss of generality $\braket{\theta_0} = 0$, and the solution simplifies to
+%
+\begin{align}
+    \theta(t) = \theta_0 e^{-t} + \omega. 
+\end{align}
+%
+We see that the troublesome $0$ eigenvalue did cause a possible instability, but it could be done away with by changing coordinate systems.
+
+In the linearized problem we always have convergence to a stationary state and in that limit
+%
+\begin{align}
+    \lim_{t \rightarrow \infty} \theta (t) = \omega,
+\end{align}
+%
+or in other words, the final distribution of oscillators is determined entirely by the distribution of $\omega$.
+
+We also clear up what it means for the angle differences to be small at all times, namely, the initial angle differences should be small and the differences in $\omega$ should also be small. This guarantees that the linearization will stay valid for all future times.
+
+The case of negative coupling constant $K$ is a straightforward extension of \cref{eq:linsol} by remembering that changing the sign of $K$ in the original problem is the same as changing the signs of $t$ and $\omega$ in the nondimensionalized problem. Thus, the solution for negative $K$ is
+%
+\begin{align}
+    \theta = \braket{\theta_0} + e^{t} \left(\theta_0 - \braket{\theta_0}\right) - \omega + \braket{\omega} \left(t + 1\right).
+\end{align}
+
+With similar arguments as before we can eliminate $\braket{\omega}$ and $\braket{\theta_0}$, but that still leaves the problem of the growing exponential. This means that the solution is unstable and will quickly leave the linearized regime, making the solution invalid. Linear analysis can't tell us if the solution is globally stable in the negative $K$ regime. 
+
+
+Linear analysis is, in effect, the behavior around $0$ for the sine. But we can also qualitatively describe stability around other characteristic points of the sine. These are a bit more contrived since for $N > 2$ it's not even possible to have all oscillators be that far away from each other (if $\theta_1$ is $\approx \pi$ away from $\theta_2$ and $\theta_2$ is $\approx \pi$ away from $\theta_3$, then $\theta_3 - \theta_1 \approx 2\pi = 0 \ (\text{mod} \ 2\pi)$.), but we can still describe the pairwise effect and use this as a qualitative guide.
+
+If the difference of two angles is approximately at the extrema of sine ($\pi/2$ or $3\pi/2$) then sine is approximately constant, and it behaves as a small effective increase in the natural frequency of the oscillator. This means that the oscillators act as though they are uncoupled from each other. This setup, though, is not stable because either due to interactions with the other oscillators or purely because of their (in general) different rotation rates, the difference in angles will drift away from the extremum and the coupling effects will return. If the instability is caused by the different $\omega$ of the two oscillators then it is only linear in time.
+
+If the difference between two of the angles is at around $\pi$, then those two oscillators are effectively coupled with a negative coupling constant. This is again exponentially unstable, for similar reasons as in the negative coupling constant case since
+%
+\begin{align}
+    \sin(\pi + \delta) \approx -\delta \quad \quad (\delta \ll 1),
+\end{align}
+%
+however the effect will most likely be drowned out by the other oscillators that are closer by cancelling out the contributions of the oscillators that are $\approx \pi$ away.
+
+Returning to the original nonlinear problem with the knowledge gained from the linearization, we get the idea to take averages of the governing \cref{eq:kuramoto}. This immediately gives us
+%
+\begin{align}
+    \dot{\braket{\theta}} &= \braket{\omega}\notag\\
+    \braket{\theta} &= \braket{\theta_0} + \braket{\omega} \! t \stackrel{\text{WLOG}}{=} 0,
+\end{align}
+%
+so that the average can always be set to $0$ at all times. In fact, a steady state is only possible if $\braket{\omega} = 0$. From here on out we will work exclusively in coordinate frames in which this is done and the sets of initial angles and natural frequencies will always have $0$ as their average.
+
+Pushing forward with the method of averaging, we consider $\braket{\theta^2}$ as a measure of the width of the set of angles. Taking the derivative and after some manipulation we get
+%
+\begin{align}\label{eq:theta_theta}
+    \dot{\braket{\theta^2}} = \braket{\theta \omega} - \frac{1}{N^2}\sum_{ij} |\theta_i - \theta_j| \sin |\theta_i - \theta_j|.
+\end{align}
+%
+This immediately leads us to consider the correlation between the angles and the natural frequencies and to try to construct a differential equation for it. Similarly to the previous construction we take a derivative and after simplification we get
+%
+\begin{align}\label{eq:theta_omega}
+    \dot{\braket{\theta \omega}} = \braket{\omega^2} - \frac{1}{N^2} \sum_{ij} (\omega_i - \omega_j) \sin (\theta_i - \theta_j).
+\end{align}
+
+At the beginning, the initial angles and natural frequencies are uncorrelated $\braket{\theta_0 \omega} \approx 0$ because of the way we're setting them up. This is also true of the sum in \cref{eq:theta_omega} meaning that $\braket{\omega^2}$ dominates at early times. This effect causes the correlation to always start increasing linearly in time. Using a similar argument for \cref{eq:theta_theta}, we get that the variance at early times always has a quadratic behavior in time, this time because the sine is negative for approximately half of the differences and positive for the other half.
+
+If a steady state is to be reached then these two quantities need to stop their growth and also reach a constant value. Otherwise, we expect the growth to continue in roughly the same way as described above since the sine will again approximately average to zero in the coupling terms.
+
+Another case we can consider is that of (`relative') $\omega \gg 1$ in which case the solution is asymptotically given by
+%
+\begin{align}
+    \theta \sim \omega t \quad \quad (t \rightarrow \infty),
+\end{align}
+%
+and hence a stable solution is never possible, since to have average $0$ some frequencies are positive and others negative.
+
+This condition on when we have a stable solution can be strengthened because a stable solution requires
+%
+\begin{align}\label{eq:Estats}
+    \omega_i + \frac{1}{N} \sum_{j=1}^N \sin(\theta_j - \theta_i) = 0 \quad \quad \forall i.
+\end{align}
+%
+Since sine's output is bounded to lie in the interval $[-1, 1]$, if
+%
+\begin{align}
+    \exists i : |\omega_i| > \frac{N - 1}{N}  \stackrel{N \rightarrow 
+    \infty}{\longrightarrow} 1,
+\end{align}
+%
+then a solution of the above set of equations is not possible, and the system doesn't have a stable solution. So $\forall i: |\omega_i| \leq (N - 1)/ N$ is a necessary but not sufficient condition to have stability.
+
+Let's look at the stability of a general solution of \cref{eq:Estats} in a bit more detail. Suppose that $\{\theta^*_i\}$ is a solution of \cref{eq:Estats}. Expanding around it with $\theta_i = \theta^*_i + \delta_i$ $(\delta_i \ll 1)$ we have
+%
+\begin{align}
+    \dot{\delta_i} = \frac{1}{N} \sum_{j=1}^N \cos(\theta^*_j - \theta^*_i) (\delta_j - \delta_i).
+\end{align}
+%
+This is a different version of the linearized problem where all the $\omega$ have been set to zero, and the coupling constants between oscillators are potentially different. Introducing the notation
+%
+\begin{align}
+    A_{ij} = \cos(\theta_i^* - \theta_j^*),
+\end{align}
+%
+the matrix $M \in \mathbb{R}^{N \times N}$, that appears in $\dot{\delta} = M \delta$, has components that can be written as
+%
+\begin{align}
+    M_{ij} = \frac{A_{ij}}{N} - \frac{\delta_{ij}}{N} \sum_{k} A_{ik}, 
+\end{align}
+%
+and is in fact nothing more than the Jacobian of the system in \cref{eq:Estats}. As before one of the eigenvalues of $M$ will be $0$, however this can't lead to an instability because this system doesn't have $\omega$ to drive it. Here we see another interpretation of the $0$ eigenvalue, namely it's here because the system of \cref{eq:Estats} is not linearly independent; one of the $N$ equations and variables can always be ignored, and we would still have the same information. The rest of the eigenvalues of $M$ should be negative or zero to have a stable stationary state. Unfortunately, for generic angles $\{\theta^*_i\}$, that don't necessarily solve \cref{eq:Estats}, this is simply not true. It's also not obvious why being a solution of the non-linear equation should help with the positiveness of the eigenvalues. But playing around with the system leads one to the following
+
+\vspace{1em}
+\textbf{Conjecture:} \textit{If \cref{eq:Estats} has a solution, then it also has a stable solution, which may or may not be the same as the aforementioned one, and whose stability is defined in the sense already discussed above.}
+\vspace{1em}
+
+If this conjecture is true then there is an immediate consequence for the quantities that stability depends on. Namely, the stability of the system \textit{depends only} on the choice of $\omega$ and, in particular, it \textit{does not depend} on the initial conditions $\theta_0$. The initial conditions can, however, play a role in which stationary state is reached because a solution of \cref{eq:Estats} is never unique; it can always, at least, be shifted by some constant, the equivalent of changing the coordinate system as before. Each angle can, of course, also be shifted by a multiple of $2 \pi$ and the solution will again be a solution.
+
+We will later see that numerical calculations support this conjecture's possible truthfulness.
+
+
+
+
+
+
+
+\section{Numerical methods}
+
+The differential equation system of \cref{eq:kuramoto} is not too hard to simulate since it doesn't have any glaring divergences; the exponential divergence that we met in the linearized problem doesn't translate to the full problem since sine is bounded and the most we can get is approximately linear growth in the case where $\omega$ dominates. Edge cases, where the solution almost stabilizes, can have trickier motions where the solution is almost constant for a while and then quickly jumps. These are obviously a very small minority and many can be handled by just using an adaptive step integrator like Runge-Kutta-Fehlberg 4(5), despite it being a Runge-Kutta type integrator, many of which aren't particularly famous for dealing with stiff problems well. With this we have the numerical integration under control for almost all possible choices of $\omega$ and $\theta_0$.
+
+Considering evaluation time, we see that the biggest time chunk goes to actually evaluating the derivative. Its computation is an $\mathcal{O}(N^2)$ operation, since we have to look at couplings between all pairs of oscillators; Our choice, RKF4(5) uses 6 function calls per time step to compute the solution and adapt the step size. \cite{rkf45}
+
+In regard to generating random sets from a given continuous probability distribution we will opt for using the built-in methods that come with \texttt{numpy.random.default\_rng()}. These have implementation of the standardized versions of all distributions we need. 
+
+In more generality, if we happen to need some more obscure distribution that isn't implemented, then we can always use inverse CDF sampling. The idea of inverse CDF sampling is to start with a random variable distributed according to the standardized uniform distribution
+%
+\begin{align}
+    U \sim \mathrm{Unif}(0,1),
+\end{align}
+%
+and transform it using the inverse of the corresponding CDF $F_X$, related to the PDF $f_X$ that we ultimately want to model. This gives
+%
+\begin{align}
+    X = F_X^{-1}(U)& &\Longrightarrow& &X \sim f_X,
+\end{align} 
+%
+which is exactly a random variable distributed in the required way.
+
+Another thing to note, in regard to our problem, is that it doesn't matter what the mean of our probability distribution is. This is because of the change in coordinate system that we discussed before. If we even want a chance for the system to stabilize then we need to have $\braket{\omega} = 0$. This we do manually; after generating a set of $\omega$ we calculate their average and take it away from each term. 
+
+
+\section{Case Study: \texorpdfstring{$N=3$}{N=3}}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.34]{Screenshot_1.png}
+    \caption{The $x-y$ domain of interest where the blue and green regions are the solutions to the stability requirement \cref{eq:3_stabil}, and the red and orange lines are the solutions to the stationarity requirement \cref{eq:3_stateqs} with $\omega_1 = -0.086$ and $\omega_2 = -0.61$.}
+    \label{fig:3_1}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_3_spec_0.1.png}
+    \caption{The solution corresponding to the case depicted in \cref{fig:3_1}}
+    \label{fig:3_1_sol}
+\end{figure}
+
+Let's have a closer look at \cref{eq:Estats} for the case of $N=3$. This is an interesting case because it's the highest $N$ for which we can properly visualize the restricted phase space. As for any $N$, the system only has $N-1=2$ independent equations for two variables. We can choose these two variables to be
+%
+\begin{align}
+    &x = \theta_2 - \theta_1,& &y = \theta_3 - \theta_1,&
+\end{align}
+%
+upon which the system can be written as
+%
+\begin{align}\label{eq:3_stateqs}
+    \omega_1 + \frac{1}{3} \sin(x) + \frac{1}{3} \sin(y) = 0\notag\\
+    \omega_2 - \frac{1}{3} \sin(x) - \frac{1}{3} \sin(x - y) = 0.
+\end{align} 
+
+Using the result mentioned previously, the stability of the solution is determined by the eigenvalues of the Jacobian of the system, which we denoted by $M$, namely their sign. For our particular case direct calculation yields the stability conditions
+%
+\begin{align}\label{eq:3_stabil}
+    \cos(x) + \cos(y) + \cos(x - y) &\geq 0\notag\\
+    \cos(x) \cos(y) + \cos(x - y) (\cos(x) + \cos(y)) &\geq 0.
+\end{align}
+
+We can visualize this system in the $x-y$ plane limited to the domain $[-\pi,\pi) \times [-\pi,\pi)$ since everything outside that is a repetition. \Cref{fig:3_1} shows this domain and the solutions to both the stationarity and stability conditions. The region of stability is the intersection of the green and blue regions. For the choice $\omega_1 = -0.086$, $\omega_2 = -0.61$, which is depicted in the figure, there is no solution to the equations. \Cref{fig:3_1_sol} shows the numerically calculated solution, and there we see that the system is indeed not stable.
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.34]{Screenshot_2.png}
+    \caption{Same setup as \cref{fig:3_1} but now with frequencies $\omega_1 = -0.086$ and $\omega_2 = -0.267$.}
+    \label{fig:3_2}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_3_spec1_0.1.png}
+    \caption{The solution corresponding to the case depicted in \cref{fig:3_2}}
+    \label{fig:3_2_sol}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.34]{Screenshot_3.png}
+    \caption{Same setup as \cref{fig:3_1} but now with frequencies $\omega_1 = -0.086$ and $\omega_2 = 0.052$.}
+    \label{fig:3_3}
+\end{figure}
+
+\Cref{fig:3_2,fig:3_2_sol,fig:3_3,fig:3_3_sol} show the same setup as the previous two but for some different values of the parameters $\omega_1$ and $\omega_2$. We see that, at least for $N=3$ solutions always appear in pairs since they are the result of intersecting contours, meaning that there are always an even number of solutions. Curiously, whenever a pair appears, it appears on the edge of the region of stability and then one solution drifts inwards while the other one moves outwards.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_3_spec2_0.1.png}
+    \caption{The solution corresponding to the case depicted in \cref{fig:3_3}}
+    \label{fig:3_3_sol}
+\end{figure}
+
+In \cref{fig:3_3} we also see that there can be many solutions of the system \cref{eq:3_stateqs} of stationarity conditions, but one and only one of those is in the region of stability for our current case of $N=3$. The complementary numerical solutions again corroborate the claims of stability.
+
+
+\section{A Note on Probabilities}
+
+From the analytical description we learned that the $\omega$ can't be too large, otherwise the system has no chance of ever being stable. In particular,
+%
+\begin{align}\label{eq:leq1_cond}
+    \forall i: |\omega_i| \leq \frac{N - 1}{N};
+\end{align}
+%
+This is slightly problematic when picking numbers from a wide probability distribution because there will always be some probability of choosing an $\omega$ that is too large in absolute terms. This is especially the case for the Lorentzian probability distribution because it is the typical example of a distribution with very long tails.
+
+When choosing the frequencies we sample the distribution $N$ times. If the probability of choosing a value larger than $(N-1)/N$ is $p_N$ then the probability that at least one of the $N$ choices is larger than $(N - 1)/N$ is given by
+%
+\begin{align}
+    P(\geq 1; N, p_N) = 1 - (1 - p_N)^N.
+\end{align}
+
+For the Lorentzian distribution with probability density function
+%
+\begin{align}
+    f(x; x_0, \gamma) = \frac{1}{\pi \gamma} \frac{\gamma^2}{(x - x_0)^2 + \gamma^2},
+\end{align}
+%
+the probability to get an outcome with absolute value larger than $(N - 1)/N$ is given by
+%
+\begin{align}
+    p_N = \frac{2}{\pi} \arctan \left(\frac{N \gamma}{N - 1}\right),
+\end{align}
+%
+and consequently if we want a probability $P(\geq 1; N, p_N) = \alpha$ then
+%
+\begin{align}
+    \gamma = \frac{N - 1}{N} \tan \left(\frac{\pi}{2} \left(1 - (1 - \alpha)^{1/N}\right)\right).
+\end{align}
+%
+To get a sense for the numbers if we have $N = 100$ oscillators, and we choose $\alpha = 0.3$ then $\gamma$ would have to be equal to $0.0055$.
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_100_lin_0.05.png}
+    \caption{The solution in the case of small angles at all times. The spread of angles is $\Delta \theta_0 = 0.1$ and $\Delta \omega = 0.1$ for the frequencies.}
+    \label{fig:100_smalls}
+\end{figure}
+
+Similarly, for the normal distribution with probability density function
+%
+\begin{align}
+    N(x; \mu, \sigma) = \frac{1}{\sqrt{2\pi} \sigma} \exp \left(- \frac{(x - \mu)^2}{2 \sigma^2}\right),
+\end{align}
+%
+the probability $p_N$ is given by the formula
+%
+\begin{align}
+    p_N = 1 - \mathrm{erf} \left(\frac{N - 1}{\sqrt{2} N \sigma}\right),
+\end{align}
+%
+and if we again choose $P(\geq 1; N, p_N) = \alpha$, then the width of the distribution should be
+%
+\begin{align}
+    \sigma = \frac{N - 1}{\sqrt{2}N} \left\lbrace \mathrm{erf}^{-1} \left( (1 - \alpha)^{1/N} \right) \right\rbrace^{-1}.
+\end{align}
+%
+Unlike the Lorentzian distribution, the normal one is not as oppressive; for the same numbers as before ($N = 100$, $\alpha = 0.3$), $\sigma$ is equal to $0.34$. What this means is that if we choose a $\sigma$ or $\gamma$, depending on the distribution, larger than this then we have a less than $30\%$ chance of the solution being convergent.
+
+Another distribution that we can look at, for the frequencies, is the uniform distribution. The uniform distribution is a nice choice because it is intrinsically bounded, meaning that we don't have to worry about $|\omega|$ being too large because we can always set our interval for the distribution to be a subset of $[-(N - 1) / N, (N - 1) / N]$.
+
+
+
+\section{Results and Discussion}
+
+We already saw what some solutions look like when discussing the $N=3$ case in more depth, so let's extend this to larger $N$. Here we will use a uniform distribution of frequencies, because of the aforementioned boundedness property. First we have the linear regime of small angles at all times for which we have a completely analytic solution. 
+
+The results gotten by numerical simulation are shown in \cref{fig:100_smalls}. The behavior is exactly the expected exponential decay to the stationary state that we predicted. The spreads, $\Delta \theta_0$ of angles and $\Delta \omega$ of frequencies are both $0.1$ in the given picture, which is why the widths of the angles at the beginning and the angles at the end are the same.
+
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_100_uniform_0.1.png}
+    \caption{The solution in the case of arbitrary initial angles, but small frequencies. The spread of frequencies is $\Delta \omega = 0.1$.}
+    \label{fig:100_smallo}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_mod_100_uniform_0.1.png}
+    \caption{The solution, modulo $2\pi$, in the case of arbitrary initial angles, but small frequencies. The spread of frequencies is $\Delta \omega = 0.2$.}
+    \label{fig:100_mod_smallo}
+\end{figure}
+
+Next up, we have the case of small frequencies but arbitrary initial angles; this is shown in \cref{fig:100_smallo,fig:100_mod_smallo}. At first glance, \cref{fig:100_smallo} may seem like a substantial change from the linear regime that we were looking at before, since we seem to get splitting into two groups. But a look at \cref{fig:100_mod_smallo}, which shows the solution modulo $2\pi$, reveals that these two regimes are not that different. The transition period at the beginning is not exponential and monotonic as it was before, but rather it can have some oscillations. The steady state behavior, on the other hand, is virtually the same, up to multiples of $2\pi$. And what's more interesting is that the spread (in the modulo picture) of the final angles is exactly as what would have been predicted using the liner equation, namely, it's the same as the spread of $\omega$.
+
+This points towards the veracity of the conjecture we gave before, since through its lens the stationary state is just some solution of \cref{eq:Estats}. If $\Delta \omega \ll 1$ then we can make the ansatz $\forall i: \theta_i^* \ll 1$, which linearizes \cref{eq:Estats} and reveals the fact that for small $\omega$ the equation always has the solution
+%
+\begin{align}
+    \theta_i^* = \omega_i + \braket{\theta^*} \stackrel{\mathrm{WLOG}}{=} \omega_i.
+\end{align} 
+%
+And not only is this a solution, but it's also always a stable solution since the linear analysis we did is valid around it. Of course the actual solution has multiples of $2\pi$ added to some of the angles, but this is only because of the choice of parametrization of the domain on which we're solving the equation and not of real physical significance.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_100_uniform_0.7.png}
+    \caption{The solution in the case of arbitrary initial angles, and medium frequencies. The spread of frequencies is $\Delta \omega = 1.4$.}
+    \label{fig:100_mediumo}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_mod_100_uniform_0.7.png}
+    \caption{The solution, modulo $2\pi$, in the case of arbitrary initial angles, and medium frequencies. The spread of frequencies is $\Delta \omega = 1.4$.}
+    \label{fig:100_mod_mediumo}
+\end{figure}
+
+\Cref{fig:100_mediumo,fig:100_mod_mediumo} show the case of $\Delta \omega = 1.4$. We see that even though the behavior seems to be getting somewhat more complicated in the transitional period, the story of the stationary state remains basically the same; a range of final angles that depends on $\omega$. Increasing the frequency from here on out leads to a region where some solutions are stable and some are not, depending on the particular set $\{\omega_i\}$ we have.
+
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_normal_100_uniform_1.0.png}
+    \caption{The solution in the case of arbitrary initial angles, and medium frequencies. The spread of frequencies is $\Delta \omega = 2.0$.}
+    \label{fig:100_largeo}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_mod_100_uniform_1.0.png}
+    \caption{The solution, modulo $2\pi$, in the case of arbitrary initial angles, and medium frequencies. The spread of frequencies is $\Delta \omega = 2.0$.}
+    \label{fig:100_mod_largeo}
+\end{figure}
+
+Continuing to still larger frequencies, we reach the range where one or more of the $\omega_i$ are larger than the bound in \cref{eq:leq1_cond}. Such a case is shown in \cref{fig:100_largeo,fig:100_mod_largeo} and here the behavior becomes, in some ways, simpler; there are no stable solutions. The oscillators with the largest frequencies are almost unaffected by the others and stream off approximately linearly in time, forming a sort of cone. The ones with smaller frequencies still feel the non-negligible effects of the coupling and move in a more complicated meandering manner. Plotted modulo $2\pi$, as in \cref{fig:100_mod_largeo}, the solution looks like a random mess, a story that's reaffirmed by animating the motion.
+
+The figures that show the solution modulo $2\pi$, as well as the animations, suggest an interpretation of the stability in terms of a phase transition. When in the regime of large omega the only phase available is a random gas-like phase. For smaller omega we can have a transition from the disordered gas-like phase into an ordered solid-like phase --- the stationary state. In this interpretation, the variance's inverse can serve as a sort of order parameter, since it is a measure of the density of oscillators in a given interval.  
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{spreads_all_0_1.6_500_200.png}
+    \caption{The spread of final angles as a function of the spread of frequencies. The different colors correspond to different distributions of frequencies. Only solutions that converge are plotted.}
+    \label{fig:spreads_500_200}
+\end{figure}
+
+From the previous solutions we saw that the stationary states, when they exist, all look qualitatively the same but with different widths depending on the set of frequencies. This combined with the phase transition interpretation beckons us to further examine the width of the distribution of final angles. To this end we plot the spread $\Delta \theta_f$, i.e., the difference between the maximal and minimal angles in an appropriately chosen $\mathrm{mod} \ 2\pi$ representation, as a function of $\Delta \omega$. The choice of representation just means shifting the angles by some global constant and is important simply because if the cut of the modulo function lies somewhere within the distribution of final angles then it will split the group, artificially making it seem as though the oscillators are far apart. Such a plot of the spreads is done in \cref{fig:spreads_500_200} for $N=200$ oscillators and different distributions of frequencies, shown in different colors; the prediction of the linear regime is plotted in black. We see that the linear prediction gives the correct spread even up to $\Delta \omega \approx 0.6$. Outside the linear regime the spread of the final angles is larger than what would be predicted linearly. Furthermore, the spread is not uniquely defined by $\Delta \omega$, or in other words it also depends on other quantities related to the values of the frequencies themselves. This can be seen in the fact that different probability distributions give slightly different results, but also in the fact that the points from the same probability distribution don't give a well-defined curve unlike in the linear regime.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{histxf_1000_uniform_0.1.png}
+    \caption{The distributions of $\theta_f$ and $\omega$ in the linear regime, for a uniform PDF. $N=1000$.}
+    \label{fig:histxf_1000_uniform_0.1}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{histxf_1000_uniform_0.73.png}
+    \caption{The distributions of $\theta_f$ and $\omega$ in the non-linear regime, for a uniform PDF. $N=1000$.}
+    \label{fig:histxf_1000_uniform_0.73}
+\end{figure}
+
+We can learn even more about the stationary state angles by looking at their overall distribution for a given run. If we take $N = 1000$ oscillators it should give us a good enough statistical sample to learn something about the probability distribution of the final state. This is done in \cref{fig:histxf_1000_uniform_0.1,fig:histxf_1000_uniform_0.73} for a uniform probability distribution of $\omega$. \Cref{fig:histxf_1000_uniform_0.1} shows this in the linear regime with $\Delta \omega = 0.2$, and there we see that as expected the distribution is basically the same for the final angles and frequencies. As we go into the non-linear regime we get \cref{fig:histxf_1000_uniform_0.73}. There the distribution doesn't remain the same, although the general shape is still similar.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{histxf_1000_normal_0.3.png}
+    \caption{The distributions of $\theta_f$ and $\omega$ in the non-linear regime, for a normal PDF. $N=1000$.}
+    \label{fig:histxf_1000_normal_0.3}
+\end{figure}
+
+Repeating the exercise for an initial normal probability distribution, we get \cref{fig:histxf_1000_normal_0.3} in the non-linear regime. The linear regime is not noteworthy since it again reaffirms the fact that the distributions are the same. From \cref{fig:histxf_1000_normal_0.3} we see that the distribution for $\theta_f$ is a bit flatter and with longer tails than the one for $\omega$.
+
+We could do the same for the Lorentzian distribution, but its long tails and aversion to generating representative samples would mean that the histograms would not tell us much information.
+
+%To make these comments more rigorous we can employ the $\chi^2$ curve-of-best-fit test. This test determines, to some given degree of certainty, whether a data set is distributed according to a given PDF whose parameters are not fixed; as part of the process the best-fit parameters are also determined.
+
+% add some plots later
+
+
+In the analytical section we also gave qualitative descriptions of how the variance and covariance should evolve in time. We can now check whether our qualitative descriptions hold up numerically.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{varcov_normal_100_normal_0.3.png}
+    \caption{The variance $\braket{\theta^2}$ and covariance $\braket{\theta \omega}$ as functions of time for a run that converges to a stationary state. The $\omega$ were generated from a normal PDF with $\sigma = 0.3$}
+    \label{fig:varcov_100_normal_0.3}
+\end{figure}
+
+A typical example in the linear regime is shown in \cref{fig:varcov_100_normal_0.3}. It uses a normal PDF with $\sigma = 0.3$ to generate the frequencies, and shows a set that converges to a stationary state. We see that our predictions for the initial shapes of the curves generally hold up, namely the covariance is indeed linear, and the variance is quadratic. The variance's quadratic growth is somewhat modified at the very beginning by the fact that the covariance and coupling terms are not exactly zero but do have some effect. Since the system comes to an equilibrium both the variance and covariance do the same.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{varcov_normal_100_normal_0.5.png}
+    \caption{The variance $\braket{\theta^2}$ and covariance $\braket{\theta \omega}$ as functions of time for a run that does not converges to a stationary state. The $\omega$ were generated from a normal PDF with $\sigma = 0.5$}
+    \label{fig:varcov_100_normal_0.5}
+\end{figure}
+
+\Cref{fig:varcov_100_normal_0.5}, on the other hand, shows a situation in which the system does not converge to a stationary state. Here the $\omega$ are not too large so that the initial linear growth of the covariance does slow down but not enough. The variance's growth also slows from its quadratic start and it becomes more linear.
+
+If we increase the natural frequencies, we get less and less slow-down, since that is the job of the coupling terms. Thus for large $\omega$ the variance and covariance never leave the regime of approximately linear and quadratic growths, respectively.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{varcov_normal_100_uniform_0.7.png}
+    \caption{The variance $\braket{\theta^2}$ and covariance $\braket{\theta \omega}$ as functions of time for a run where the oscillators don't all converge at the same time. The $\omega$ were generated from a uniform PDF on the interval $[-0.7, 0.7]$}
+    \label{fig:varcov_100_spec}
+\end{figure}
+
+An interesting case where not all the oscillators converge at the same time is shown in \cref{fig:varcov_100_spec}.
+
+\section{Negative Coupling Constant}
+
+When we considered the linearized problem we saw that the negative coupling constant solution was unstable around the $0$ of sine. This is to be expected since this case switches the sign of sine and consequently the roles of the $0$ and $\pi$ roots of sine. An angle difference of $\pi$ is now desired. Qualitatively, this makes the solutions look very different, because a phase difference of $\pi$ between all oscillators is simply impossible if $N > 2$. Instead of clumping together as when reaching a stationarity state in the positive $K$ case, they will remain somewhat spread out. But spread out angles mean that the coupling sum as a whole has less sway because coupling terms cancel between themselves.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_neq_normal_100_neg_spec_0.01.png}
+    \caption{Solution with a negative coupling constant for $N=100$ oscillators. The natural frequencies are chosen from a uniform distribution with $\Delta \omega = 0.02$, and the initial conditions are that all oscillators are at zero.}
+    \label{fig:sol_neg_100_0.01}
+\end{figure}
+
+\Cref{fig:sol_neg_100_0.01} exemplifies this spreading out behavior. With all the oscillators starting at $\theta_0=0$ they are initially in the small angle regime, but then they immediately start spreading exponentially as we predicted in the analysis. This doesn't last forever because as the angles start filling out the whole interval $[-\pi, \pi]$ the effect of the coupling sum becomes negligible because of the oscillations of the sine. This can be seen in \cref{fig:coup_neg_100_0.01}, which shows the size of the coupling term as a function of time, and where we see that after the initial expansion its role becomes negligible.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{solution_neq_normal_100_neg_spec_coup_0.01.png}
+    \caption{Coupling term for the motion described in \cref{fig:sol_neg_100_0.01}.}
+    \label{fig:coup_neg_100_0.01}
+\end{figure}
+
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{solution_neq_normal_100_neg_spec_0.5.png}
+    \caption{Solution with a negative coupling constant for $N=100$ oscillators. The natural frequencies are chosen from a uniform distribution with $\Delta \omega = 1$, and the initial conditions are uniformly distributed oscillators on the interval $[-\pi, \pi]$.}
+    \label{fig:sol_neg_100_0.5}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{solution_neq_normal_100_neg_spec_coup_0.5.png}
+    \caption{Coupling term for the motion described in \cref{fig:sol_neg_100_0.01}.}
+    \label{fig:coup_neg_100_0.5}
+\end{figure}
+
+\Cref{fig:sol_neg_100_0.5,fig:coup_neg_100_0.5} have the same setup, but now the initial angles are uniformly distributed on the interval $[-\pi, \pi]$ and the frequencies are larger. We see that the initial exponential expansion is not even present and consequently the size of the coupling term starts completely negligible and stays that way.
+
+The stationarity condition for both cases is similar, the negative case just switches the signs of all the frequencies. But the stability condition is exactly the opposite, so that in general there does not seem to be an equivalent conjecture to the one in the positive $K$ case.
+
+In fact, from all numerical tests the negative $K$ case does not seem to ever converge. The only exception being the case when all frequencies are $0$.
+
+One may think that by choosing an asymmetric distribution for the initial angles we could force the coupling term away from $0$ because sine would presumably give more positive (negative) than negative (positive) terms. This doesn't work however, because whatever the distribution of angles the difference of angles has a symmetric distribution because of properties of the convolution. Namely,
+%
+\begin{align}
+    (f * (x \mapsto f(-x)))(z) &= \int_{-\infty}^{\infty} f(z - t) f(-t) \dif t \notag\\
+    &= \int_{-\infty}^{\infty} f(z + t) f(t) \dif t \\
+    &= \int_{-\infty}^{\infty} f(- z + t) f(t) \dif t \notag\\
+    &= (f * (x \mapsto f(-x)))(-z); \notag
+\end{align} 
+%
+the behavior we described for the coupling term is generic.
+
+The final thing that's of some interest in the negative $K$ case, and tells the same story as the other plots is to look at the variance and covariance as before. It also points towards the fact that no stationarity state is possible as long as $\omega$ is non-zero.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{varcov_neg_normal_100_uniform_0.001.png}
+    \caption{Variance and covariance for the case of negative coupling constant. $\Delta \omega = 0.002$}
+    \label{fig:varcov_neg_100_0.001}
+\end{figure}
+
+In \cref{fig:varcov_neg_100_0.001} we have these two quantities. For the covariance we see that is quickly goes into the linear regime where coupling is negligible and grows extremely slowly since our frequencies are so small. For the variance, looking at the scale we see that it changes negligibly during the whole motion. But more importantly we see that even for such small frequencies the variance still exhibits growth in the long term and no signs of stopping.
+
+
+\section{Further Questions}
+
+All simulations and the in-depth look at the $N=3$ case point to the fact that, the conjecture that the existence of a solution of \cref{eq:Estats} is a necessary \textit{and} sufficient condition for the system to converge to a stable stationary state is true. This is not because all solution of \cref{eq:Estats} describe a stable stationary state but because there always seem to be an even number of solutions to the system, one (and possibly only one) of which is always stable.
+
+Further evidence for this conjecture comes from simulating the oscillators with the same set of frequencies but with different initial conditions. For all tested sets of $\omega$ the stability was always a consistent property independent of the initial conditions.
+
+We have not, however, proven that this is the case analytically and this requires further work.
+
+From what we have seen of the distributions of final angles the general shape of the input distribution seems to stay the same but with a different width. This, though, can be further improved by simulating larger samples of oscillators and also by checking the shape of the final distribution with a goodness-of-fit test like $\chi^2$.
+
+
+
+\nocite{existence}
+
+
+\printbibliography
+
+
+\end{document}
