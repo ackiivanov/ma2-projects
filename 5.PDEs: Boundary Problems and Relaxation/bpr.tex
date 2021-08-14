@@ -1,0 +1,408 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{bpr.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+
+\begin{document}
+
+\title{PDEs: Boundary Problems and Relaxation}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statements}
+
+\subsubsection*{Problem 1}
+ 
+Find the Poiseuille coefficient $C$ for the flow of a viscous fluid through a pipe with the cross-section pictured in \cref{fig:problem_shape}. In nondimensional form this is given by
+%
+\begin{align}
+    \nabla^2 u &= -1\\
+    C &= \frac{8 \pi}{S^2} \iint u \dif x \dif y,
+\end{align}
+%
+where $S$ is the area of the shape and $u$ is the velocity. Test the benefits of the Successive Over-Relaxation (SOR) and Chebyshev-accelerated SOR methods and find the optimal parameters for both. Be careful with edges that don't exactly fall on the discretized points of the mesh.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.2]{problem_shape.png}
+    \caption{Cross-sectional profile of the pipe that we want to simulate the flow in.}
+    \label{fig:problem_shape}
+\end{figure}
+
+\subsubsection*{Problem 2}
+
+We heat a cylinder with dimensions $h=2r$ with a constant flux on its lower base. We cut the side of the cylinder into two pieces along a plane passing through its center and perpendicular to the bases and keep these two pieces at different constant temperatures. The upper base is also at a constant temperature and this temperature is the same as the temperature of the lower half of the side. Find the temperature profile for the described situation. What would be different if we isolated the upper base instead? 
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.45]{problem_sketch.png}
+    \caption{Geometry and boundary conditions of the second problem.}
+    \label{fig:problem_sketch}
+\end{figure}
+
+\section{Numerical Methods}
+
+To make life simpler our domain will always be the unit square with an appropriate mask so that we're never solving outside of the shape we choose. Furthermore, we'll use a uniformly spaced mesh of points in both the $x$ and $y$ directions with the same step size $h$.
+
+Throughout, we will be making use of four iterative methods. The simpler two are the Jacobi and Gauss-Seidel methods. These are just discretization of the second derivative with the only difference between them being where we update from. The Jacobi method updates its values completely from the previous iteration while the Gauss-Jacobi method updates its points from both the previous and the current iteration if they have already been calculated.
+
+With these two the Poisson equation $\nabla^2 u = q$ becomes
+%
+\begin{align}
+    u_{j,k}^{n+1} &= \frac{1}{4} \left( u_{j-1,k}^n + u_{j,k+1}^n + u_{j+1,k}^n + u_{j,k-1}^n \right)\notag\\ &- \frac{1}{4} q_{j,k}h^2 
+\end{align}
+%
+for the Jacobi method and 
+\begin{align}
+    u_{j,k}^{n+1} &= \frac{1}{4} \left( u_{j-1,k}^{n+1} + u_{j,k+1}^n + u_{j+1,k}^n + u_{j,k-1}^{n+1} \right)\notag\\ &- \frac{1}{4} q_{j,k}h^2 
+\end{align}
+%
+for the Gauss-Seidel method with the usual discretization notation employed.
+
+The two other methods we will be using are improvements on top of the Gauss-Seidel method. These are the Successive Over-Relaxation (SOR) method and the Chebyshev symmetrized version of SOR. Both of them introduce the parameter $\omega$, which is used to take a weighted average of the newly calculated solution and the previous solution. Namely,
+%
+\begin{align}
+    u_{j,k}^{n+1} = u_{j,k}^{n} + \omega (u_{j,k}^{n+1*} - u_{j,k}^{n}),
+\end{align}
+%
+where $u_{j,k}^{n+1*}$ is the solution calculated by Gauss-Seidel. This new parameter can in theory take values in the range $0 < \omega < 2$ and still converge, however, in practice for our type of problem, values higher than $1$ are the ones to look at. The characteristic property of SOR is that for a specific value of $\omega$ the algorithm converges much faster than the unmodified Jacobi and Gauss-Seidel algorithms. This optimal $\omega_0$ depends on the number of points $N$ and also has a weak dependence on the shape we choose. For a square with a uniform mesh as described above we have a theoretical approximation to the optimal value given by
+%
+\begin{align}\label{eq:optimal_square}
+    \omega_0 = \frac{2}{1 + \sin (\pi/N)}.
+\end{align}
+%
+Finding the more exact value will be something we're interested in.
+
+The Chebyshev symmetrized version \cite{cheb} uses the same parameter, but it has a different order of updating the values. It updates the values in a chessboard pattern so that whenever we update a cell we're using its neighbors from the previous iteration and not a mix of the previous and current iterations.
+
+It's also possible to implement the Chebyshev algorithm such that it doesn't require a value of $\omega$ upfront, but instead it also updates the value of $\omega$ as we go through the iterations starting from the neutral $\omega=1$.
+
+To determine when to stop the calculation we will use the condition that the 2-norm of the difference of the last two solutions per cell is smaller than a given tolerance
+%
+\begin{align}
+    \norm{u^{n+1} - u^{n}}_2 / N^2 < \epsilon.
+\end{align}
+
+As the boundary of our region of interest can be arbitrary, it's likely that it won't fall exactly on the established mesh of points. This problem can be avoided in two ways. Either we make the density of points large enough for the effect of the boundary to not matter. Or we can modify the differential equation by making the last step inside the domain smaller than the rest so that we end up exactly on the boundary \cite{BCs}. The last point on the inside has four neighbors, at $(j-1,k), (j,k+1), (j+1,k)$ and $(j,k-1)$, and in general we have to look at modifying all of them. If we denote the last step size by $\alpha_b h, \ b \in \{0,1,2,3\}, \alpha_b < 1$, one alpha for each of the four directions in the order above, then we get the modified Laplacian formula
+%
+\begin{align}
+    \nabla^2 u \approx \sum_b \frac{2 u_b}{\alpha_b(\alpha_b + \alpha_{b'})} - 2 \left( \frac{1}{\alpha_0 \alpha_2} + \frac{1}{\alpha_1 \alpha_3} \right) u_{j,k},
+\end{align}
+%
+where $b' =\mathrm{mod}(b + 2,4)$, $u_b$ denotes the value of the function at the interpolated boundary point closest to the neighbor denoted by $b$. What the above formula is telling us is how to modify the coefficients in the difference formula to take into account the smaller steps and that this change affects opposite points in pairs, an expected fact just from the definition of the derivative.
+
+In the case of Dirichlet boundary conditions the above $u_b$ are $0$ and the formula is simpler. This however doesn't mean that there is no effect because the coefficient in front of $u_{j,k}$ is now different.
+
+For the second problem we also have boundary conditions of Neumann-like type. To apply these we will discretize the derivative in the asymmetric form
+%
+\begin{align}
+    \left. \frac{\dif u}{\dif x}\right|_{j,k} \approx \frac{u_{j+1,k} - u_{j,k}}{h}.
+\end{align}
+
+Until now, we haven't talked about the initial guess for the solution needed to start iterating. This is because in the case of Dirichlet conditions we can always start with the initial guess being $0$ everywhere and iterate from there.
+
+In the case of Neumann-like conditions this is not the case since the condition fixes the difference of neighboring points at the boundary but not their actual value. This means that if we start with a wrong value at that boundary, it may happen that we can never correct it.
+
+However, in the case of part 1 of Problem 2 we can avoid this problem because there the top and right boundaries in the $r-z$ plane are still given by Dirichlet conditions, so that if we start integrating from those boundaries we can expect the solution to be correct. In the case of part 2 of Problem 2 we can't avoid it so easily, and we have to be more careful in choosing the initial guess.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{iters_w.png}
+    \caption{Number of iterations necessary for convergence as a function of $\omega$. The iterations have been limited to $500$ to save on unnecessary computation. The shape of the region is the square.}
+    \label{fig:iters_w}
+\end{figure}
+
+\section{Results: Problem 1}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{optimal_N.png}
+    \caption{Optimal parameter $\omega$ as a function of the number of points $N$. The shape of the region is the square.}
+    \label{fig:optimal_N}
+\end{figure}
+
+To speed up all subsequent calculations we will first look at finding the optimal $\omega_0$. First we look for it by fixing the number of points to $N=100$. By looking around the theoretical prediction we find that near the optimal value SOR and Chebyshev converge after less than $500$ iterations. Knowing this we can do a sweep across the whole region of $\omega$ and plot the number of iterations needed for convergence for each one. Furthermore, we limit the maximal number of iterations to $500$ because we know that the value we're looking for has less than that. Since SOR's convergence is very dependent on $\omega$, this saves a lot of unnecessary computation. This procedure is shown in \cref{fig:iters_w}. As expected from the theoretical approximation, the optimal value is near $\omega = 1.93$. The optimal values from this figure are
+%
+\begin{align}
+    \mathrm{SOR:}\ \omega_0 &= 1.948 \pm 0.001\notag\\
+    \mathrm{Chebyshev:}\ \omega_0 &= 1.957 \pm 0.001.
+\end{align}
+%
+The values for SOR and Chebyshev are similar but not exactly the same and furthermore, Chebyshev does slightly better at its optimal value than SOR. We also see a fall to $0$ iterations at values of $\omega$ near $0$. This doesn't represent any real solution and is an artifact of the stopping condition. At small $\omega$ we're updating the solution so little that the condition for convergence gets fulfilled even through we don't have an actual solution.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{optimal_N_birdhouse.png}
+    \caption{Optimal parameter $\omega$ as a function of the number of points $N$. The shape of the region is the birdhouse.}
+    \label{fig:optimal_N_birdhouse}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{alpah_fit.png}
+    \caption{Fitting the $\alpha-\beta$ modified model for the birdhouse-shaped region using both the SOR and Chebyshev methods.}
+    \label{fig:alpha_fit}
+\end{figure}
+
+Next we do a more thorough search for different $N$. For the unmodified square this dependence is shown in \cref{fig:optimal_N}. We see that the analytical solution is quite a good guess for the optimal values, although there are deviations. We also see as before that the Chebyshev optimal value is slightly higher than the SOR optimal value. The optimal value is also dependent on the shape of our domain. If we try to capture the behavior of the optimal value as a modification to \cref{eq:optimal_square} we can try to fit the data with the following model
+%
+\begin{align}
+    \frac{2}{\omega_0} - 1 = \alpha \sin \left( \frac{\pi}{N} \right) + \beta,
+\end{align}
+%
+where we have introduced the fitting parameters $\alpha$ and $\beta$.
+\Cref{fig:optimal_N_birdhouse} shows the dependence for our birdhouse-shaped domain. Here we see that the analytical guess is again good however the SOR and Chebyshev lines are now farther apart.
+
+A better perspective is obtained through \cref{fig:alpha_fit}, which shows a fit of the $\alpha-\beta$ modified model above with the results from the Chebyshev and SOR methods. Since the model has inverse values of our quantities which have a more uniform distribution, we show the plot in a log-log scale. We see that the linear model describes the data well enough and gives the fitting parameters as
+%
+\begin{align}
+    \mathrm{SOR:}\ &\alpha = 1.32 \pm 0.06, &\beta = -0.02 \pm 0.01\notag\\
+    \mathrm{Cheb.:}\ &\alpha = 1.33 \pm 0.07, &\beta = -0.04 \pm 0.02.
+\end{align}
+%
+where the error only accounts for the statistics of the data and not further model error.
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{conv.png}
+    \caption{Speed of convergence of the four methods on the square domain. The simple Jacobi and Gauss-Seidel methods don't even converge at this tolerance and maximal number of iterations.}
+    \label{fig:conv}
+\end{figure}
+
+Having found the optimal values for running SOR and Chebyshev, we continue with testing their performance. First we're interested in how fast they converge. \Cref{fig:conv} shows the speed of convergence of the four methods we're considering. It's a plot of the deviation measure used in the stopping condition as a function of the number of iterations. It has been capped at $n=700$ iterations and in that time the Jacobi and Gauss-Seidel methods did not even converge to the given tolerance $\epsilon = 10^{-10}$. The SOR and Chebyshev methods, on the other hand, with the optimal values of $\omega$ converged very fast. Chebyshev converged the fastest of the four. More concerning is the fact that the Jacobi and Gauss-Seidel methods' slope on this plot is very small, meaning that even if we were to wait longer they wouldn't be that closer to converging.  
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{times.png}
+    \caption{Evaluation time of the four methods on the square domain. Again, the SOR and Chebyshev methods do better.}
+    \label{fig:times}
+\end{figure}
+
+In a similar vein, we also have how long it takes for the methods to find the solution, i.e. the evaluation time. This is shown in \cref{fig:times}. Of course, the SOR and Chebyshev methods again do better asymptotically (in this case meaning from $\sim \!\!10$ points). At large values there seems to be an unexpected speed-up of the Jacobi method, but upon further inspection this turns out to also be an artifact of the stopping condition and the method does not actually converge to the solution.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.5]{sor_fit.png}
+    \caption{Evaluation time fit for the SOR method on the square domain. We see evidence that the asymptotic behavior is going to have a larger power.}
+    \label{fig:cheb_fit}
+\end{figure}
+
+A fit of these data gives the asymptotic power law dependence of the evaluation time on the number of points as
+%
+\begin{align}
+    \mathrm{Jacobi,\ Gauss-Seidel:}& &t \sim N^{\approx 3.3}\notag\\
+    \mathrm{SOR,\ Chebyshev:}& &t \sim N^{\approx 2.3},
+\end{align}
+%
+however here we have tested up to $N=100$ and further testing with higher values is probably necessary to determine these numbers more accurately. \Cref{fig:cheb_fit} shows the fit for the SOR method as corroboration that the evaluation time indeed has a power law dependence. At the same time we see evidence that for higher $N$ the power will be higher, so we can't claim to have reached the asymptotic regime.
+
+Having tested some of the properties of these methods in regard to convergence and speed we continue with actually solving for the flow profile and the Poiseuille coefficient of the birdhouse-like shape.
+Some flow profiles including the birdhouse-shaped one can be seen in \cref{fig:profile_square,fig:profile_circle,fig:profile_circlebar,fig:profile_halfcircle,fig:profile_astroid,fig:profile_birdhouse} all of which have been calculated with the Chebyshev method. The circle serves as a good test since its coefficient is exactly $1$ in theory. The astroid does a good job of showing off why we need to take better care of the boundary because even after implementing the above boundary interpolation we can still see that one of its contours (shown dashed) is still not particularly smooth.
+
+After implementing the algorithms, generating flow profiles is as easy as creating the proper mask.
+
+\newpage
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.446]{profile_square.png}
+    \caption{Flow for square profile.}
+    \label{fig:profile_square}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.446]{profile_circle.png}
+    \caption{Flow for circle profile.}
+    \label{fig:profile_circle}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.445]{profile_circlebar.png}
+    \caption{Flow for circle with bar profile.}
+    \label{fig:profile_circlebar}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.446]{profile_halfcircle.png}
+    \caption{Flow for semicircular profile.}
+    \label{fig:profile_halfcircle}
+\end{figure}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.446]{profile_astroid.png}
+    \caption{Flow for astroid profile.}
+    \label{fig:profile_astroid}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.445]{profile_birdhouse.png}
+    \caption{Flow for birdhouse profile.}
+    \label{fig:profile_birdhouse}
+\end{figure}
+
+\newpage
+
+\begin{table}
+    \centering
+    \begin{tabular}{|l|l|l|}
+    \hline
+    Shape & $C_{\mathrm{calc}}$ & $C_{\mathrm{real}}$ \\ \hline \hline
+    square  & 0.866 &  \\ \hline
+    circle  & 0.992 & 1.000 \\ \hline
+    circle-bar  & 0.456 &  \\ \hline
+    semicircle  & 0.773 & 0.757 \\ \hline
+    astroid  & 0.755 &  \\ \hline
+    birdhouse  & 0.593 &  \\ \hline
+    \end{tabular}
+    \caption{Poiseuille coefficient values for the different shapes calculated with $N = 200$. The real values are provided when possible.}
+    \label{tab:vals}
+\end{table}
+
+The Poiseuille coefficients for these profiles are given in \cref{tab:vals}. Two of the coefficients --- for the circle and semicircle --- are also compared to their real values from where we can see that our values are not magnificently correct. For the circle we get it right to two decimal place, while for the semicircle we only get one decimal place. Thus, we shouldn't be too trusting of these values; all we can say with certainty is that for the birdhouse-like shape it's $\sim\!0.6$. Very spikey shapes like the astroid are even more suspicious.
+
+\section{Results: Problem 2}
+
+Having already written the algorithms and discussed the differences in this second problem. All that is needed is to adapt to the Neumann-like conditions when necessary.
+
+The three free parameters of the problem statement --- $T_1$, $T_2$ and $j$ --- are actually two independent,  non-trivial free parameters because we can always choose a different $0$ for the temperature. We'll  choose to set $T_1=0$.
+
+The boundary conditions specified in the problem statement have to be supplemented with another boundary condition at $r=0$. The one that physically makes sense here is
+%
+\begin{align}
+    \left. \frac{\partial T}{\partial r} \right|_{r=0} = 0,
+\end{align}
+%
+which can be seen by imagining a Gaussian cylinder around the $z$-axis and letting its radius go to $0$.
+
+Since all the boundary conditions are now fixed, we can construct the solutions. Some profiles and their parameter values are shown in what follows. (\cref{fig:profile_-10_-10_1,fig:profile_-10_0_1,fig:profile_0_-10_1,fig:profile_0_10_1,fig:profile_10_0_1,fig:profile_10_10_1})
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.6]{profile_-10_-10_1.png}
+    \caption{Temperature profile for $T_2=-10$, $j=-10$.}
+    \label{fig:profile_-10_-10_1}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.6]{profile_-10_0_1.png}
+    \caption{Temperature profile for $T_2=-10$, $j=0$.}
+    \label{fig:profile_-10_0_1}
+\end{figure}
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.6]{profile_0_-10_1.png}
+    \caption{Temperature profile for $T_2=0$, $j=-10$.}
+    \label{fig:profile_0_-10_1}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.6]{profile_0_10_1.png}
+    \caption{Temperature profile for $T_2=0$, $j=10$.}
+    \label{fig:profile_0_10_1}
+\end{figure}
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.6]{profile_10_0_1.png}
+    \caption{Temperature profile for $T_2=10$, $j=0$.}
+    \label{fig:profile_10_0_1}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.6]{profile_10_10_1.png}
+    \caption{Temperature profile for $T_2=10$, $j=10$.}
+    \label{fig:profile_10_10_1}
+\end{figure}
+
+\clearpage
+
+Some expected behavior that we can see in the figures is that we always have the contour lines perpendicular to the $z$-axis, which is a consequence of the boundary condition at $r=0$. Similarly, when $j=0$ the contours are perpendicular to the $r$-axis. When the flow $j$ and temperature $T_2$ have the same sign and are not $0$ a relatively flat contour can appear where the effects of the two balance (\cref{fig:profile_-10_-10_1,fig:profile_10_10_1}). If $T_2 \neq 0 (=T_1)$ then the profile has two humps; one dominated by the temperature $T_1$, the other by the temperature $T_2$.
+
+
+For part two, as discussed before, we need to be more careful about the initial conditions and more vigilant of the final solution to be sure that we have the correct one.
+
+A boundary condition for an isolated side is simply a special case of the one for a constant current
+%
+\begin{align}
+    \left. \frac{\partial T}{\partial z} \right|_{z=H} = 0,
+\end{align}
+%
+so that now we have Neumann-like conditions on three of the sides.
+
+Again a smattering of temperature profiles with different parameter values using this new boundary condition is shown in...
+
+A lot of the same observations from before can also be seen here. However, some new things can be seen as well. Comparing \cref{fig:profile_10_0} and \cref{fig:profile_10_10}, we can see that, as an effect of the constant temperature reservoirs, changes are somewhat localized to their halves of the cylinder; the profile at the top doesn't change that much even when the bottom changes considerably.
+
+With this setup, the top doesn't share a reservoir with a part of the side and consequently the pictures are more symmetric than in part 1.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.6]{profile_-10_-10.png}
+    \caption{Temperature profile for $T_2=-10$, $j=-10$ and an isolated top.}
+    \label{fig:profile_-10_-10}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.6]{profile_-10_0.png}
+    \caption{Temperature profile for $T_2=-10$, $j=0$ and an isolated top.}
+    \label{fig:profile_-10_0}
+\end{figure}
+
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[scale=0.6]{profile_10_0.png}
+    \caption{Temperature profile for $T_2=10$, $j=0$ and an isolated top.}
+    \label{fig:profile_10_0}
+\end{figure}
+
+\begin{figure}[!hb]
+    \centering
+    \includegraphics[scale=0.6]{profile_10_10.png}
+    \caption{Temperature profile for $T_2=10$, $j=10$ and an isolated top.}
+    \label{fig:profile_10_10}
+\end{figure}
+
+
+\nocite{golden}
+\printbibliography
+
+\end{document}
