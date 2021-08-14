@@ -1,0 +1,341 @@
+\documentclass[10pt,a4paper,twocolumn]{article}
+%\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{commath}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{indentfirst}
+\usepackage{hyperref}
+\usepackage{enumitem}[leftmargin=0pt]
+\usepackage{cleveref}
+\usepackage{yfonts}
+\usepackage{verbatim}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{braket}
+\usepackage[stable]{footmisc}
+\usepackage{tensor}
+
+\usepackage[backend=biber]{biblatex}
+\addbibresource{femep.bib}
+
+\usepackage{graphicx}
+\graphicspath{{images/}}
+
+\renewcommand{\vec}[1]{\bm{\mathrm{#1}}}
+
+\begin{document}
+
+\title{Motion of an Inextensible String}
+\author{Aleksandar Ivanov}
+\date{\today}
+\maketitle
+
+\section{Problem Statement}
+
+Simulate the motion of an inextensible string with the initial condition of a perfectly straight and still string $\phi(s,t=0) = \phi_0)$.
+
+
+\section{Mathematical Setup}
+
+When modeling the motion of inextensible strings without using more complicated models based on elastomechanics, we start from the string equations, which relate the coordinates of a point along the string $(x(s), y(s))$ with the internal forces acting in the string $F(s)$
+%
+\begin{align}
+    \rho \frac{\partial^2 x}{\partial t^2} &= \frac{\partial}{\partial s} \left( F \frac{\partial x}{\partial s} \right), \notag\\
+    \rho \frac{\partial^2 y}{\partial t^2} &= \frac{\partial}{\partial s} \left( F \frac{\partial y}{\partial s} \right) + \rho, \notag\\
+    1 &= \left( \frac{\partial x}{\partial s} \right)^2 + \left( \frac{\partial y}{\partial s} \right)^2,
+\end{align}
+%
+where the final equation is just the inextensibility condition and where in the second equation we have set $g=1$, which can be achieved by rescaling.
+
+As discussed in lecture, the best way to solve this system is by introducing the angle from the horizontal as a new variable $\phi$
+%
+\begin{align}
+    &\cos \phi = \frac{\partial x}{\partial s},& &\sin \phi = \frac{\partial y}{\partial s}.&
+\end{align}
+%
+To transform the string equations into equations for $F$ and $\phi$ instead we divide by $\rho$ and take one more derivative with respect to $s$.
+
+Assuming that $\rho$ is a constant it can again be rescaled to $1$, and after simplification the equations become
+%
+\begin{align}
+    \frac{\partial^2 \phi}{\partial t^2} = 2 \frac{\partial F}{\partial s} \frac{\partial \phi}{\partial s} + F \frac{\partial^2 \phi}{\partial s^2}, \notag\\
+    \frac{\partial^2 F}{\partial s^2} + \left( \frac{\partial \phi}{\partial t} \right)^2 - F \left( \frac{\partial \phi}{\partial s} \right)^2 = 0,
+\end{align}
+%
+If we wanted to simulate a string with variable density along it then we would also have to differentiate it in the previous steps. This gives rise to one extra term for each equation, and they become
+%
+\begin{align}
+    \frac{\partial^2 \phi}{\partial t^2} &= \frac{2}{\rho} \frac{\partial F}{\partial s} \frac{\partial \phi}{\partial s} + \frac{F}{\rho} \frac{\partial^2 \phi}{\partial s^2} + \frac{F}{\rho^2} \frac{\partial \rho}{\partial s} \frac{\partial \phi}{\partial s},\\
+    0 &= \frac{1}{\rho} \frac{\partial^2 F}{\partial s^2} + \left( \frac{\partial \phi}{\partial t} \right)^2 - \frac{F}{\rho} \left( \frac{\partial \phi}{\partial s} \right)^2 + \frac{1}{\rho^2} \frac{\partial \rho}{\partial s} \frac{\partial F}{\partial s},\notag
+\end{align}
+
+The next thing we have to worry about is initial and boundary conditions. For the initial conditions we use the fact that the string starts from rest in a given configuration $\phi_0(s)$, which sets the conditions
+%
+\begin{align}
+    &\phi(s, t=0) = \phi_0(s),& &\frac{\partial \phi}{\partial t}(s, t=0) = 0.&
+\end{align}
+
+The boundary conditions are a bit more work. At the end where we will choose to start our parametrization, we have a fixed boundary condition $x=\mathrm{const.}, y=\mathrm{const.}$. To implement this in terms of $F$ and $\phi$ we notice that this condition implies that any derivate of $x$ or $y$ has to be $0$ at this boundary. Specifically, the second time derivative that appears in the original form of the string equations is $0$ which directly leads to the conditions
+%
+\begin{align}
+    \left.\left(\frac{\partial F}{\partial s} \cos \phi - F \frac{\partial \phi}{\partial s} \sin \phi \right)\right|_{s=0} &= 0, \notag\\
+    \left.\left(\frac{\partial F}{\partial s} \sin \phi + F \frac{\partial \phi}{\partial s} \cos \phi \right)\right|_{s=0} &= -\rho(0).
+\end{align}
+
+These can be combined and simplified into the conditions
+%
+\begin{align}
+    &\frac{\partial F}{\partial s} = - \rho \sin \phi,& &F \frac{\partial \phi}{\partial s} = - \rho \cos \phi,&
+\end{align}
+%
+where everything is, of course, evaluated at $s=0$.
+
+One detail to notice at this point concerns the compatibility of our initial and boundary conditions. Per the text of the question, we want to concern ourselves with angles that are constant along the string, i.e. $\partial \phi / \partial s = 0$ everywhere and specifically at $s=0$ too. For a bounded function $\rho$, the first condition tells us that the derivative of $F$ is bounded, which subsequently means that $F$ itself is also bounded. For the second condition to be satisfied, in that case, we have to have
+%
+\begin{align}
+    \cos \phi_0 = 0,
+\end{align}
+%
+where we assumed that the density isn't $0$ at the fixed endpoint. This means that our initial and boundary conditions are only compatible if $\phi_0 = \pm \pi/2$, i.e. the two equilibrium positions. In any other case the initial condition is not compatible with the boundary condition. The effect of this incompatibility is not negligible since it effectively gives the string a kick on a length scales and time scales that are always smaller than whatever grid we choose. It can clearly be seen in the energy and angle evolutions, where the first time step always brings about a very large change in angle, producing a spike in the rotational kinetic energy.
+
+On the other end of the string, the choice of boundary condition is a bit more open. One thing that is fixed is that the force $F$ on that end has to be $0$ by the usual argument that nonzero forces would cause infinite acceleration. The second boundary condition, on the other hand, is a bit more up for debate. When solving analytically, the condition is usually applies as $\phi(s=1) < \infty$ or any equivalent condition that avoids singularities. Numerically, though, this is not helpful, and we need to make a choice of a more descriptive boundary condition. The two choices that we will look at in this work are:
+%
+\begin{enumerate}
+    \item choice: $\partial^2 \phi / \partial s^2 (s=1,t) = 0$ and
+    \item choice: $\partial \phi / \partial s (s=1,t) = 0$.
+\end{enumerate}
+%
+If left unspecified, we are working with the first choice.
+
+Another option that we will try is to put a mass $m$ at $s=1$. The boundary conditions in this case are the equations of motion of the mass, which are
+%
+\begin{align}
+    m \frac{\partial^2 x}{\partial t^2}(s=1,t) &= - \left. F \cos(\phi) \right|_{s=1},\notag\\
+    m \frac{\partial^2 y}{\partial t^2}(s=1,t) &= - \left. F \sin(\phi) \right|_{s=1}.
+\end{align}
+
+\section{Numerical Setup}
+
+To numerically implement the above equations, we will discretize the length of the string into $N + 1$ segments each of length $\Delta s$ and numbered from zero to $N$. Similarly, time will be discretized into $M+1$ intervals of length $r \Delta s$ and again numbered from zero to $M$. The reason to introduce the time interval through $\Delta s$ instead of as its own parameter is stability; if the time interval is too small for the given length interval then the integration will be unstable. By introducing $r$ we can always be sure that we're not in this regime.
+
+Once we have established a mesh, we can discretize the derivatives, as was done in lecture. For the internal points $i=1,2,\dots, N-1$ this gives rise to an explicit equation for $\phi$
+%
+\begin{align}
+    \phi_i^{n+1} = r^2 \left\lbrace \frac{1}{2} (F_{i+1}^n - F_{i-1}^n) (\phi_{i+1}^n - \phi_{i-1}^n) \right.\notag\\ +F_i^n (\phi_{i+1}^n - 2 \phi_i^n + \phi_{i-1}^n)\Big\rbrace + 2 \phi_i^n - \phi_i^{n-1},
+\end{align}
+%
+where lower indices are space indices and upper indices are time indices. For the first iteration we interpret $\phi^{-1}$ as $\phi^0$, which implements the initial condition on the derivative.
+
+The equation for $F$ is found in a similar way, with the major difference that rather than being explicit it is a matrix equation for $F$ due to the derivative being space derivatives. It is given by
+%
+\begin{align}
+    F_{i+1}^n - \left[2 + \frac{(\phi_{i+1}^n - \phi_{i-1}^n)}{4}\right] + F_{i-1}^n \notag\\
+    = - \frac{1}{r^2} \left(\phi_i^n - \phi_i^{n-1}\right)^2.
+\end{align}
+
+The equation for the boundary points come about from the boundary conditions. In the case of $F$ we have
+%
+\begin{align}
+    &- F_0^n + F_1^n = - \Delta s \sin \phi_0^n,& &F_N^n = 0,&
+\end{align}
+%
+the first of which has to be interpreted as another equation to add to the matrix system, while the second one can just be put in by hand.
+
+
+In the case of $\phi$, the boundary condition at $s=1$ is simple and is either
+%
+\begin{align}\label{eq:bc2phi}
+    &\phi_N^n = 2 \phi_{N-1}^n  - \phi_{N-2}^n& &\mathrm{or}& &\phi_N^n = \phi_{N-1}^n,&
+\end{align}
+%
+depending on our choice. The boundary condition at $s=0$ is a bit more problematic to implement. The usual discretization of the derivative (whether symmetric or not) gives a transcendental equation to solve at each time step, which is computationally expensive. To mend this problem we write down the following discretization for the condition
+%
+\begin{align}
+    \frac{\phi_2^n - \phi_0^n}{2 \Delta s} = -\frac{1}{F_0^n} \cos \phi_1^n.
+\end{align} 
+%
+This is technically the symmetric discretization of the derivative at $s_1$, but it does not give rise to a transcendental equation, making it easier to solve. The second problem with this condition is that to apply it, we need the value of $F_0^n$. But to solve for $F_0^n$ one needs to solve the whole matrix system for $F$, which includes, among other things, $\phi_0$ itself. We might hope that we can include one more equation in the system and solve for $F_i$ and $\phi_0$ at the same time, but if we include $\phi_0$ as a variable the equations become nonlinear, and thus not solvable as matrix equations. The other option to break the cycle is to replace $F_0^n$ with $F_0^{n-1}$ in the equation for the boundary condition, with the hope that F doesn't change too much from one time step to the next. With this choice the equation for $\phi_0^n$ becomes
+%
+\begin{align}
+    \phi_0^n = \phi_2^n + \frac{2 \Delta s}{F_0^{n-1}} \cos \phi_1^n.
+\end{align}
+
+This then clears up the order of operations. For each time step $n$ the procedure is:
+%
+\begin{enumerate}
+    \item compute $\phi_i^n \ \ (i=1,2,\dots,N-1)$,
+    \item compute $\phi_0^n$ and $\phi_N^n$,
+    \item compute $F_i^n \ \ (i=0,1,\dots,N-1)$
+    \item add $F_N^n=0$.
+\end{enumerate}
+
+If we were to add a mass $m$ at the $s=1$ end of the string, then we would have to change the boundary conditions at $s=1$. Discretizing the equations from before and simplifying we get
+%
+\begin{align}
+    \tan \phi_N^n = \tan \phi_{N-1}^n - \frac{\Delta s}{F_{N-1}^{n-1}} \sec \phi_{N-1}^n,\notag
+\end{align}
+\vspace{-1.7em}
+\begin{align}
+    F_N^n  &= \frac{1}{1 + \frac{\Delta s}{m}} \times\notag\\
+    &\times \sqrt{(F_{N-1}^n)^2 - 2 \Delta s F_{N-1}^n \sin \phi_{N-1}^n + \Delta s^2},
+\end{align}
+%
+where we have again used the substitution of $F_{N-1}^n$ with $F_{N-1}^{n-1}$ to avoid a circular set of equations.
+
+For angles that are not too close to the horizontal, we know that $F \sim m$, so that if we're working with masses $m \gg \Delta s$ the equations becomes simply
+%
+\begin{align}
+    \phi_N^n &\approx \phi_{N-1}^n\notag\\
+    F_N^n &\approx F_{N-1}^n.
+\end{align}
+%
+We will not be using this, but it does provide a sense of what region of parameter space definitely doesn't care much about the $F_{N-1}^n$ substitution.
+
+
+\section{Results}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{phi_s.png}
+    \caption{$\phi$ as a function of $s$ for a few different moments in time, labeled by their index in the $M+1$ sized array.}
+    \label{fig:phi_s}
+\end{figure}
+
+It is obviously interesting to look at the profile of the string, i.e. $\phi$ and $F$ as functions of $s$ at some given instant of time. \Cref{fig:phi_s} shows this for $\phi$ with an initial angle $\phi_0 = \pi / 2 - 0.1$. The blue line shows the initial profile, which is constant. Following this, a wave starts propagating from the top of the string due to incompatibility discussed before, which is shown with the orange line; the bottom of the string still hasn't reacted. The green line then shows what happens near a whipping motion of the free end. As the end whips around, the angle near the end changes drastically. This again generates a wave that propagates back up the string, a snapshot of which can be seen as the red line. The time of simulation for this plot was $\sim\!1$ period or equivalently $\sim\!2$ swings.
+
+An animation of the evolution of the profile of $\phi$ is provided under the name \texttt{phi.mp4}.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{F_s.png}
+    \caption{$F$ as a function of $s$ for a few different moments in time, labeled by their index in the $M+1$ sized array.}
+    \label{fig:F_s}
+\end{figure}
+
+Unlike $\phi$ the equivalent plot for $F$, shown in \cref{fig:F_s} is much less dynamic. We see that at all times the force in the string a linear function to very high accuracy and has basically the same $y$-intercept for all the lines. The fact that the force is a linear function continues to hold even for larger values of the initial angle, but in that case there is some difference in the $y$-intercepts of the lines. At the free end, of course, the force must be $0$, since that is out boundary condition.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{F_s_0.47079632679489647.png}
+    \caption{$F$ as a function of $s$ for a few different moments in time, labeled by their index in the $M+1$ sized array. Now the value of $\phi_0$ is smaller (more horizontal).}
+    \label{fig:F_s_alt}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{F0_phi0.png}
+    \caption{$F(s=0)$ as a function of $\phi_0$. The interval shows the spread over time that was seen in the case of more horizontal angles.}
+    \label{fig:F0_phi0}
+\end{figure}
+
+We can then look at the average value and spread in the $y$-intercepts as seen in \cref{fig:F_s_alt}as a function of the initial angle. \Cref{fig:F0_phi0} shows exactly this. We see that for angles close to $\pi/2$ --- what would usually be called the small angle approximation --- the value is basically constant over time and very close to $1$. As we move away from the small angle approximation, the force at the endpoint drops, and it gains some time evolution, mostly increasing over time. This plot only takes into account relatively peaceful times, when there is no whipping around of the endpoint, which can momentarily change the value somewhat. \Cref{fig:F_s_alt} does not make this assumption though, and there we can see that we are unlikely to hit such a dramatic point with a uniform sampling of points. Thus, \cref{fig:F0_phi0} should only be seen as indicative of the general trend and not as giving an exact value.
+
+A better idea of the evolution can be gleamed by the animation \texttt{F.mp4}, which shows the evolution of the $F$ profile over time, and in it we can see what the effect of the whipping around is.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{phi_t.png}
+    \caption{$\phi$ as a function of time $t$ for a few different points along the string.}
+    \label{fig:phi_t}
+\end{figure}
+
+\begin{figure}[!b]
+    \centering
+    \includegraphics[scale=0.5]{F_t.png}
+    \caption{$F$ as a function of time $t$ for a few different points along the string.}
+    \label{fig:F_t}
+\end{figure}
+
+Going back to the relatively small angle $\phi_0 = \pi/2 - 0.1$ it's also interesting to look at the time evolution at a given point on the string. \Cref{fig:phi_t} shows this for a couple of points along the string. There is an oscillation of sorts that takes about $T \approx 2\pi$, which makes sense for our choice of units. The motion is, of course, not exactly periodic. We again see the delayed reaction of the free end as a plateau for points close to that end at the beginning of the plot. We can also see that there are multiple points in time, where almost all line segments have the same angle, and the string returns to being relatively straight. 
+
+The equivalent plot for $F$ --- \cref{fig:F_t} --- shows how the force at a given point evolves over time with the average value subtracted because as we learned before the force at a given point is approximately constant. We see that, it too oscillates like the angle, but with double the frequency.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{phi_t_0.4.png}
+    \caption{$\phi$ as a function of time $t$ for a few different points along the string. Now the starting angle is $\phi_0=0.4$.}
+    \label{fig:phi_t_alt}
+\end{figure}
+
+Somewhat surprisingly, all of the above described effects, even the multiple time points where the string is straight, remain true even for more horizontal angles. A plot for $\phi(t)$ with the initial angle $\phi_0 = 0.4$ is shown in \cref{fig:phi_t_alt}. We see that the main difference is wilder behavior near the extrema, where the force also becomes sharper. The approximate period is also getting longer as we would expect from higher amplitude corrections to the pendulum as a very rough model of our string. 
+
+Regarding, the comparison of the two choice of boundary condition at the free end, the animation $2bcs.mp4$ is provided. In it we can see that the motion of the string is pretty much the same for both boundary conditions with only slight deviations near the free end that also seem to not propagate much either up the string or in time.
+
+As always, we expect energy conservation to hold in this system. The energy has three contributions: linear kinetic, rotational kinetic and gravitational potential. These can be calculated for each segment with position $x,y$ and angle $\phi$ as
+%
+\begin{align}
+    E_i &= \frac{1}{2} \frac{(x_i^{n+1} - x_i^n)^2 + (y_i^{n+1} - y_i^n)^2}{\Delta t^2}\notag\\
+    &+ \frac{\Delta s^2}{24} \left(\frac{\phi_i^{n+1} - \phi_i^n}{\Delta t}\right)^2 - y_i^n.
+\end{align}
+
+To calculate $x$ and $y$ from $\phi$ we need to integrate, but be careful to take into account the half segment at the beginning. The equations are
+%
+\begin{align}
+    x_i &= \sum_{j=0}^{i-1} \Delta s \cos \phi_j + \frac{1}{2} \Delta s \cos \phi_i,\notag\\
+    y_i &= \sum_{j=0}^{i-1} \Delta s \sin \phi_j + \frac{1}{2} \Delta s \sin \phi_i.
+\end{align}
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.45]{E_t_1.4....png}
+    \caption{Energy over time in the small angle regime for $\phi_0=\pi/2 - 0.1$. If the rotational energy was included in $E_0$, we would have $E_0 = -98.2249$.}
+    \label{fig:E_t}
+\end{figure}
+
+Special care need to be taken about calculating $E_0$ since we know that in reality the contribution should be purely potential, but because of the incompatibility of initial and boundary conditions before we will generically also get a spike due to rotational kinetic energy, which we neglect.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{E_t_0.4.png}
+    \caption{Energy over time in the larger angle regime for $\phi_0=0.4$. If the rotational energy was included in $E_0$, we would have $E_0 = 1222.3525$.}
+    \label{fig:E_t_alt}
+\end{figure}
+
+\Cref{fig:E_t_alt} shows the energy in the small angle case. We see that we have very little variation --- $\sim\! 0.04$ for a value that is $\approx 100$. There are however spikes of energy change which roughly correspond to periods of time when the force is changing the most.
+
+For angles closer to the horizontal we have \cref{fig:E_t_alt}, there the value of the energy is larger, i.e. less negative, and the variation in energy is larger too, here $\sim\!5$. The effect of the incompatibility, which was less visible for small angles is now crystal clear since if plotted the values of $E_0$ including rotational kinetic energy would have been $E_0 = 1222.3525$, which is orders of magnitude more than the rest of the values in the figure.
+
+We mentioned in lecture that oscillations in the energy can be seen due to an inappropriately chosen time step, such that $r$ is too large. But even with $r=0.01$, there are still some oscillations in the energy that appear from time to time; these are the thickened lines in the plots.
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{ergdev_phi0.png}
+    \caption{Deviations of energy as a function of the initial angle $\phi_0$.}
+    \label{fig:Edev_phi0}
+\end{figure}
+
+Another interesting quantity to look at related to the energy is the deviation of the energy as a function of initial angle. This is a rough measure of if dramatic events, such as whipping around, are happening, since during those we see the most energy deviation. 
+
+This is shown in \cref{fig:Edev_phi0} for $\sim\!1$ swing and $\sim\!2$ swings. We see that in the region of relatively horizontal starting string we have the most deviation and that deviation happen already in the first swing. For initial angles close to the vertical there is almost no deviation; the motion there is less dramatic. Between these two we get a region that has more deviation than the almost vertical region, but it only reaches this during the second swing.
+
+Starting with string configurations that are not straight destroys a few of the discussed properties. The force profile is no longer a mostly straight line, the motion can still be approximately periodic, but it isn't guaranteed, shocks appear more readily if the initial configuration is more curved and so on.
+
+\begin{figure}[!h]
+    \centering
+    \includegraphics[scale=0.5]{F_s_0.png}
+    \caption{Force profile for linear initial angle}
+    \label{fig:F_s_000}
+\end{figure}
+
+\begin{figure}[!t]
+    \centering
+    \includegraphics[scale=0.5]{phi_s_0.png}
+    \caption{Angle profile for linear initial angle}
+    \label{fig:phi_s_000}
+\end{figure}
+
+An example for an initial $\phi_0$ that is a linear function of $s$ going from $\pi/2$ at $s=0$ to $-0.3$ at $s=1$ is shown in \cref{fig:F_s_000,fig:phi_s_000}, where we see the loss of some properties as well as the fact that the free end is moving around much more and creating shocks.
+
+Animations of a similar profile and a profile for which the string crosses itself multiple times are provided too. For the case of the string that crosses itself, the animation becomes unreliable near the very end since the energy of the system can be observed to deviate a lot.
+
+
+Finally, animations of a string with an attached mass are also provided. They behave very much like a pendulum if the mass is heavy enough, but if it isn't there is a possibility of seeing approximate standing waves in the profile of the string as the mass swing about.
+
+\end{document}
