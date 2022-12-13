@@ -35,7 +35,7 @@
 
 \title{Ensemble of Kuramoto Oscillators}
 \author{Aleksandar Ivanov}
-\date{\today}
+\date{21.07.2021}
 \maketitle
 
 \section{Problem Statement}
@@ -43,7 +43,7 @@
 Explore the motion of an ensemble of $N$ (at least $100$) Kuramoto oscillators that have a Lorentzian or Gaussian distribution of natural frequencies by solving the system
 %
 \begin{align}\label{eq:kuramoto}
-    \theta_i = \omega_i + \frac{K}{N} \sum_{j=1}^N \sin(\theta_j - \theta_i),
+    \dot{\theta_i} = \omega_i + \frac{K}{N} \sum_{j=1}^N \sin(\theta_j - \theta_i),
 \end{align}
 %
 where the physical interpretation of $\theta_i$ is as the phase of the $i$-th oscillator, $\omega_i$ is the natural frequency of the $i$-th oscillator and $K$ is a coupling constant. Consider how the continuous distribution of frequencies should be mapped onto a discrete set of values. At the initial moment, the phases should be uniformly distributed on the interval $[0, 2 \pi)$. With the solution $\theta_i$ compute the complex order parameter and observe its behavior.
